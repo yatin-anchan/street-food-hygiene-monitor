@@ -176,35 +176,29 @@ import MainLayout from "../layouts/MainLayout.astro";
                     class="cc-image"
                     data-lightbox
                     data-src="${c.image_url}"
-                    alt="${c.vendor_name}"
+                    alt="${c.vendor_name}" style="border-radius: 8px; width:100%;height:50%;object-fit:cover;object-position:center;"
                   />
                 </div>
               `
               : `<div class="cc-thumb-placeholder"><span class="material-icons-round">store</span></div>`
           }
 
-          <div class="cc-vendor">
-            <span class="cc-name">${c.vendor_name}</span>
-            <span class="severity ${c.severity}">
+          <div class="cc-vendor" style="margin-top: 0.25rem; margin-bottom: 0.5rem;">
+            <h1><span class="cc-name">${c.vendor_name}</span></h1>
+            <span class="severity ${c.severity}" style="margin-top: 0.25rem; align-items:center; gap:4px;">
               <span class="material-icons-round sev-icon">${severityIcon[c.severity] ?? 'flag'}</span>
               ${c.severity}
-            </span>
+            </span><br/>
           </div>
         </div>
 
-        ${
-          c.description
-            ? `<p class="cc-desc">${c.description.slice(0, 100)}${c.description.length > 100 ? '…' : ''}</p>`
-            : ''
-        }
-
         <div class="cc-footer">
-          <span class="cc-date">
-            <span class="material-icons-round">calendar_today</span>
-            ${new Date(c.created_at).toLocaleDateString('en-IN')}
+          <span class="cc-date" style="margin-bottom: 0.5rem;">
+            <span class="material-icons-round" style="margin-right: 0.5rem;">calendar_today</span>
+            <b>Reported on:</b> ${new Date(c.created_at).toLocaleDateString('en-IN')}
           </span>
 
-          <select class="status-select" onchange="window.updateStatus(${c.id}, this.value)">
+          <select class="status-select" style="margin-bottom: 0.5rem; margin-top: 0.5rem;" onchange="window.updateStatus(${c.id}, this.value)">
             ${statuses.map(s => `<option value="${s}" ${c.status === s ? "selected" : ""}>${s}</option>`).join('')}
           </select>
 
