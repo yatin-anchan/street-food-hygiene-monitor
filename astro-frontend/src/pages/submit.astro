@@ -1,6 +1,7 @@
 ---
 import MainLayout from "../layouts/MainLayout.astro";
 ---
+
 <MainLayout title="Report Issue">
   <section>
     <div class="container">
@@ -23,8 +24,16 @@ import MainLayout from "../layouts/MainLayout.astro";
                 <span class="material-icons-round">store</span>
                 Vendor Name
               </label>
-              <input type="text" id="vendorName" placeholder="e.g. Sharma Vada Pav" autocomplete="off" />
+              <input
+                type="text"
+                id="vendorName"
+                placeholder="e.g. Sharma Vada Pav"
+                autocomplete="off"
+                maxlength="60"
+              />
+              <span class="char-counter" id="vendorNameCounter">0 / 60</span>
             </div>
+
             <div class="form-group">
               <label for="vendorType">
                 <span class="material-icons-round">category</span>
@@ -42,9 +51,12 @@ import MainLayout from "../layouts/MainLayout.astro";
 
           <!-- Issues -->
           <div class="form-group">
-            <label><span class="material-icons-round">bug_report</span>Hygiene Issues Observed</label>
+            <label>
+              <span class="material-icons-round">bug_report</span>
+              Hygiene Issues Observed
+            </label>
             <div class="checkbox-grid">
-              {["Dirty utensils","Spoiled food","Insects","No gloves","Open drain nearby","No hand washing"].map(issue => (
+              {["Dirty utensils", "Spoiled food", "Insects", "No gloves", "Open drain nearby", "No hand washing"].map((issue) => (
                 <label class="check-label">
                   <input type="checkbox" value={issue} />
                   <span class="check-box"></span>
@@ -69,7 +81,7 @@ import MainLayout from "../layouts/MainLayout.astro";
             <input type="hidden" id="severity" value="Critical" />
           </div>
 
-          <!-- Image -->
+          <!-- Image with crop -->
           <div class="form-group">
             <label for="image">
               <span class="material-icons-round">photo_camera</span>
@@ -78,13 +90,18 @@ import MainLayout from "../layouts/MainLayout.astro";
             <div class="file-drop" id="fileDrop">
               <span class="material-icons-round drop-icon">cloud_upload</span>
               <p>Drag & drop or <span class="file-link">browse files</span></p>
-              <p class="file-hint">JPG, PNG up to 10MB</p>
+              <p class="file-hint">JPG, PNG up to 10MB · Will be cropped to 1:1</p>
               <input type="file" id="image" accept="image/*" />
             </div>
+
             <div id="imagePreviewWrap" class="image-preview-wrap" style="display:none">
-              <img id="imagePreview" class="img-fixed" src="" alt="Preview" style="height:160px;border-radius:var(--radius-sm)" />
+              <img id="imagePreview" class="img-fixed img-cropped-preview" src="" alt="Preview" />
               <button type="button" id="removeImage" class="remove-img">
                 <span class="material-icons-round">close</span>
+              </button>
+              <button type="button" id="recropImage" class="recrop-btn">
+                <span class="material-icons-round">crop</span>
+                Re-crop
               </button>
             </div>
           </div>
@@ -95,20 +112,24 @@ import MainLayout from "../layouts/MainLayout.astro";
               <span class="material-icons-round">description</span>
               Detailed Description
             </label>
-            <textarea id="description" placeholder="Describe what you observed. Be specific about date, time, and conditions..."></textarea>
+            <textarea
+              id="description"
+              placeholder="Describe what you observed. Be specific about date, time, and conditions..."
+              maxlength="500"
+            ></textarea>
+            <span class="char-counter" id="descCounter">0 / 500</span>
           </div>
 
           <!-- Location -->
           <div class="form-group">
-            <label><span class="material-icons-round">location_on</span>Location</label>
+            <label>
+              <span class="material-icons-round">location_on</span>
+              Location
+            </label>
             <div class="location-btns">
               <button type="button" class="secondary-btn" id="locationBtn">
                 <span class="material-icons-round">my_location</span>
                 Use Current Location
-              </button>
-              <button type="button" class="secondary-btn" id="pickMapBtn">
-                <span class="material-icons-round">map</span>
-                Pick on Map
               </button>
             </div>
             <div class="location-status" id="locationStatus">
@@ -128,348 +149,651 @@ import MainLayout from "../layouts/MainLayout.astro";
     </div>
   </section>
 
-  <!-- Map Picker Modal -->
-  <div class="map-modal-overlay" id="mapModalOverlay">
-    <div class="map-modal">
-      <div class="map-modal-header">
-        <h2><span class="material-icons-round">map</span>Pick Location on Map</h2>
-        <button id="closeMapModal" class="close-modal">
-          <span class="material-icons-round">close</span>
-        </button>
+  <!-- Crop Modal -->
+  <div class="crop-modal-overlay" id="cropModalOverlay">
+    <div class="crop-modal">
+      <div class="crop-modal-header">
+        <h2><span class="material-icons-round">crop</span>Crop Your Image</h2>
+        <p class="crop-hint">Drag to reposition · Scroll to zoom</p>
       </div>
-      <p class="map-hint">Click anywhere on the map to drop a pin and set the complaint location.</p>
-      <div id="pickerMap"></div>
-      <div class="map-modal-footer">
-        <span id="pickedCoords" class="picked-coords">No location picked yet</span>
-        <button id="confirmMapBtn" class="primary-btn" disabled>
-          <span class="material-icons-round">check</span>
-          Confirm Location
-        </button>
+
+      <div class="crop-canvas-wrap">
+        <canvas id="cropCanvas"></canvas>
+        <div class="crop-overlay">
+          <div class="crop-frame" id="cropFrame"></div>
+        </div>
+      </div>
+
+      <div class="crop-controls">
+        <input
+          type="range"
+          id="cropZoom"
+          min="1"
+          max="3"
+          step="0.01"
+          value="1"
+          class="zoom-slider"
+        />
+        <div class="crop-actions">
+          <button type="button" class="secondary-btn" id="cancelCrop">Cancel</button>
+          <button type="button" class="primary-btn" id="confirmCrop">
+            <span class="material-icons-round">check</span>
+            Apply Crop
+          </button>
+        </div>
       </div>
     </div>
   </div>
-</MainLayout>
 
-<script>
-  import { supabase } from "../utils/supabase";
+  <script>
+    const statusMessage = document.getElementById("statusMessage");
+    const submitBtn = document.getElementById("submitBtn");
+    const imageInput = document.getElementById("image");
+    const locationBtn = document.getElementById("locationBtn");
+    const locationText = document.getElementById("locationText");
+    const locationStatus = document.getElementById("locationStatus");
 
-  const statusMessage = document.getElementById("statusMessage")!;
-  const submitBtn = document.getElementById("submitBtn") as HTMLButtonElement;
-  const imageInput = document.getElementById("image") as HTMLInputElement;
-  const locationBtn = document.getElementById("locationBtn") as HTMLButtonElement;
-  const pickMapBtn = document.getElementById("pickMapBtn") as HTMLButtonElement;
-  const locationText = document.getElementById("locationText")!;
-  const locationStatus = document.getElementById("locationStatus")!;
+    let latitude = null;
+    let longitude = null;
 
-  let latitude: number | null = null;
-  let longitude: number | null = null;
-  let pickerMap: any = null;
-  let pickerMarker: any = null;
-  let pendingLat: number | null = null;
-  let pendingLng: number | null = null;
+    // Cropper state
+    const CROP_SIZE = 400;
+    let cropImg = new Image();
+    let cropScale = 1;
+    let cropOffsetX = 0;
+    let cropOffsetY = 0;
+    let cropDragging = false;
+    let cropDragStartX = 0;
+    let cropDragStartY = 0;
+    let cropDragOriginX = 0;
+    let cropDragOriginY = 0;
+    let croppedBlob = null;
+    let originalFile = null;
 
-  // ── Severity buttons ──
-  document.querySelectorAll('.sev-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.sev-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      (document.getElementById('severity') as HTMLInputElement).value = (btn as HTMLElement).dataset.val!;
+    const cropOverlay = document.getElementById("cropModalOverlay");
+    const cropCanvas = document.getElementById("cropCanvas");
+    const ctx = cropCanvas.getContext("2d");
+    const zoomSlider = document.getElementById("cropZoom");
+
+    cropCanvas.width = CROP_SIZE;
+    cropCanvas.height = CROP_SIZE;
+
+    function drawCrop() {
+      ctx.clearRect(0, 0, CROP_SIZE, CROP_SIZE);
+      const w = cropImg.naturalWidth * cropScale;
+      const h = cropImg.naturalHeight * cropScale;
+      ctx.drawImage(cropImg, cropOffsetX, cropOffsetY, w, h);
+    }
+
+    function clampOffsets() {
+      const w = cropImg.naturalWidth * cropScale;
+      const h = cropImg.naturalHeight * cropScale;
+      cropOffsetX = Math.min(0, Math.max(CROP_SIZE - w, cropOffsetX));
+      cropOffsetY = Math.min(0, Math.max(CROP_SIZE - h, cropOffsetY));
+    }
+
+    function openCropper(file) {
+      originalFile = file;
+      const url = URL.createObjectURL(file);
+      cropImg = new Image();
+
+      cropImg.onload = () => {
+        const ratio = Math.max(
+          CROP_SIZE / cropImg.naturalWidth,
+          CROP_SIZE / cropImg.naturalHeight
+        );
+
+        cropScale = ratio;
+        cropOffsetX = (CROP_SIZE - cropImg.naturalWidth * cropScale) / 2;
+        cropOffsetY = (CROP_SIZE - cropImg.naturalHeight * cropScale) / 2;
+
+        zoomSlider.value = "1";
+        zoomSlider.min = String(ratio);
+        zoomSlider.max = String(ratio * 3);
+        zoomSlider.step = String(ratio * 0.01);
+
+        drawCrop();
+        cropOverlay.classList.add("active");
+        document.body.style.overflow = "hidden";
+        URL.revokeObjectURL(url);
+      };
+
+      cropImg.src = url;
+    }
+
+    cropCanvas.addEventListener("mousedown", (e) => {
+      cropDragging = true;
+      cropDragStartX = e.clientX;
+      cropDragStartY = e.clientY;
+      cropDragOriginX = cropOffsetX;
+      cropDragOriginY = cropOffsetY;
+      cropCanvas.style.cursor = "grabbing";
     });
-  });
 
-  // ── Image preview ──
-  imageInput.addEventListener('change', () => {
-    const file = imageInput.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const wrap = document.getElementById('imagePreviewWrap')!;
-      const prev = document.getElementById('imagePreview') as HTMLImageElement;
-      prev.src = e.target!.result as string;
-      wrap.style.display = 'block';
-      document.getElementById('fileDrop')!.style.display = 'none';
-    };
-    reader.readAsDataURL(file);
-  });
+    window.addEventListener("mousemove", (e) => {
+      if (!cropDragging) return;
+      cropOffsetX = cropDragOriginX + (e.clientX - cropDragStartX);
+      cropOffsetY = cropDragOriginY + (e.clientY - cropDragStartY);
+      clampOffsets();
+      drawCrop();
+    });
 
-  document.getElementById('removeImage')!.addEventListener('click', () => {
-    imageInput.value = '';
-    document.getElementById('imagePreviewWrap')!.style.display = 'none';
-    document.getElementById('fileDrop')!.style.display = 'flex';
-  });
+    window.addEventListener("mouseup", () => {
+      cropDragging = false;
+      cropCanvas.style.cursor = "grab";
+    });
 
-  // ── File drop zone ──
-  const fileDrop = document.getElementById('fileDrop')!;
-  fileDrop.addEventListener('click', () => imageInput.click());
-  fileDrop.addEventListener('dragover', (e) => { e.preventDefault(); fileDrop.classList.add('drag-over'); });
-  fileDrop.addEventListener('dragleave', () => fileDrop.classList.remove('drag-over'));
-  fileDrop.addEventListener('drop', (e: any) => {
-    e.preventDefault(); fileDrop.classList.remove('drag-over');
-    const dt = e.dataTransfer;
-    if (dt.files[0]) { const list = dt.files; (imageInput as any).files = list; imageInput.dispatchEvent(new Event('change')); }
-  });
-
-  // ── Current location ──
-  function setLocation(lat: number, lng: number) {
-    latitude = lat; longitude = lng;
-    locationText.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-    locationStatus.classList.add('has-location');
-    locationStatus.querySelector('.material-icons-round')!.textContent = 'location_on';
-  }
-
-  locationBtn.addEventListener('click', () => {
-    locationBtn.textContent = 'Locating...';
-    navigator.geolocation.getCurrentPosition(
-      (pos) => { setLocation(pos.coords.latitude, pos.coords.longitude); locationBtn.innerHTML = '<span class="material-icons-round">my_location</span>Use Current Location'; },
-      () => { alert('Unable to access location. Please allow location access.'); locationBtn.innerHTML = '<span class="material-icons-round">my_location</span>Use Current Location'; }
+    cropCanvas.addEventListener(
+      "touchstart",
+      (e) => {
+        const t = e.touches[0];
+        cropDragging = true;
+        cropDragStartX = t.clientX;
+        cropDragStartY = t.clientY;
+        cropDragOriginX = cropOffsetX;
+        cropDragOriginY = cropOffsetY;
+      },
+      { passive: true }
     );
-  });
 
-  // ── Map picker ──
-  const overlay = document.getElementById('mapModalOverlay')!;
-  const pickedCoords = document.getElementById('pickedCoords')!;
-  const confirmBtn = document.getElementById('confirmMapBtn') as HTMLButtonElement;
+    window.addEventListener(
+      "touchmove",
+      (e) => {
+        if (!cropDragging) return;
+        const t = e.touches[0];
+        cropOffsetX = cropDragOriginX + (t.clientX - cropDragStartX);
+        cropOffsetY = cropDragOriginY + (t.clientY - cropDragStartY);
+        clampOffsets();
+        drawCrop();
+      },
+      { passive: true }
+    );
 
-  pickMapBtn.addEventListener('click', () => {
-    overlay.classList.add('active');
-    document.body.style.overflow = 'hidden';
+    window.addEventListener("touchend", () => {
+      cropDragging = false;
+    });
 
-    setTimeout(() => {
-      if (!pickerMap) {
-        pickerMap = (window as any).L.map('pickerMap').setView([20.5937, 78.9629], 5);
-        (window as any).L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap'
-        }).addTo(pickerMap);
+    zoomSlider.addEventListener("input", () => {
+      const newScale = parseFloat(zoomSlider.value);
+      const cx = CROP_SIZE / 2;
+      const cy = CROP_SIZE / 2;
 
-        pickerMap.on('click', (e: any) => {
-          pendingLat = e.latlng.lat; pendingLng = e.latlng.lng;
-          if (pickerMarker) pickerMarker.remove();
-          pickerMarker = (window as any).L.circleMarker([pendingLat, pendingLng], {
-            radius: 10, color: '#4f8ef7', fillColor: '#4f8ef7', fillOpacity: 0.85
-          }).addTo(pickerMap).bindPopup('📍 Complaint location').openPopup();
-          pickedCoords.textContent = `${pendingLat!.toFixed(5)}, ${pendingLng!.toFixed(5)}`;
-          confirmBtn.disabled = false;
-        });
-      }
-      pickerMap.invalidateSize();
-    }, 100);
-  });
+      cropOffsetX = cx - (cx - cropOffsetX) * (newScale / cropScale);
+      cropOffsetY = cy - (cy - cropOffsetY) * (newScale / cropScale);
+      cropScale = newScale;
 
-  document.getElementById('closeMapModal')!.addEventListener('click', () => {
-    overlay.classList.remove('active');
-    document.body.style.overflow = '';
-  });
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) { overlay.classList.remove('active'); document.body.style.overflow = ''; } });
+      clampOffsets();
+      drawCrop();
+    });
 
-  confirmBtn.addEventListener('click', () => {
-    if (pendingLat !== null && pendingLng !== null) {
-      setLocation(pendingLat, pendingLng);
-      overlay.classList.remove('active');
-      document.body.style.overflow = '';
-    }
-  });
+    cropCanvas.addEventListener(
+      "wheel",
+      (e) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.05 : 0.05;
+        const newScale = Math.max(
+          parseFloat(zoomSlider.min),
+          Math.min(parseFloat(zoomSlider.max), cropScale + delta * cropScale)
+        );
 
-  // ── Image upload ──
-  async function uploadImage(file: File): Promise<string | null> {
-    if (!file) return null;
-    const fileName = `${Date.now()}-${file.name}`;
-    const { error } = await supabase.storage.from("complaint-images").upload(fileName, file);
-    if (error) throw new Error("Image upload failed");
-    const { data } = supabase.storage.from("complaint-images").getPublicUrl(fileName);
-    return data.publicUrl;
-  }
+        const cx = CROP_SIZE / 2;
+        const cy = CROP_SIZE / 2;
+        cropOffsetX = cx - (cx - cropOffsetX) * (newScale / cropScale);
+        cropOffsetY = cy - (cy - cropOffsetY) * (newScale / cropScale);
+        cropScale = newScale;
+        zoomSlider.value = String(cropScale);
 
-  // ── Submit ──
-  document.getElementById("feedbackForm")!.addEventListener("submit", async (e) => {
-    e.preventDefault();
+        clampOffsets();
+        drawCrop();
+      },
+      { passive: false }
+    );
 
-    const vendorName = (document.getElementById("vendorName") as HTMLInputElement).value;
-    const vendorType = (document.getElementById("vendorType") as HTMLSelectElement).value;
-    const severity = (document.getElementById("severity") as HTMLInputElement).value;
-    const description = (document.getElementById("description") as HTMLTextAreaElement).value;
-    const checkedIssues = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:checked')).map(c => c.value);
-    const imageFile = imageInput.files?.[0];
+    document.getElementById("confirmCrop").addEventListener("click", () => {
+      const out = document.createElement("canvas");
+      out.width = CROP_SIZE;
+      out.height = CROP_SIZE;
+      out.getContext("2d").drawImage(cropCanvas, 0, 0);
 
-    if (description.trim().length < 10) {
-      showStatus("Description must be at least 10 characters.", "error");
-      return;
-    }
+      out.toBlob(
+        (blob) => {
+          if (!blob) return;
+          croppedBlob = blob;
+          const url = URL.createObjectURL(blob);
+          const prev = document.getElementById("imagePreview");
+          prev.src = url;
+          document.getElementById("imagePreviewWrap").style.display = "flex";
+          document.getElementById("fileDrop").style.display = "none";
+          cropOverlay.classList.remove("active");
+          document.body.style.overflow = "";
+        },
+        "image/jpeg",
+        0.92
+      );
+    });
 
-    try {
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span class="material-icons-round">hourglass_empty</span>Submitting...';
-      let imageUrl: string | null = null;
-      if (imageFile) imageUrl = await uploadImage(imageFile);
+    document.getElementById("cancelCrop").addEventListener("click", () => {
+      cropOverlay.classList.remove("active");
+      document.body.style.overflow = "";
+      imageInput.value = "";
+    });
 
-      const apiUrl = import.meta.env.VITE_API_URL ?? "https://worker-api.yatin-a-anchan.workers.dev";
-      const response = await fetch(`${apiUrl}/api/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vendor_name: vendorName, vendor_type: vendorType, issue_types: checkedIssues, severity, description, image_url: imageUrl, latitude, longitude }),
+    document.getElementById("recropImage").addEventListener("click", () => {
+      if (originalFile) openCropper(originalFile);
+    });
+
+    document.querySelectorAll(".sev-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".sev-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("severity").value = btn.dataset.val;
       });
+    });
 
-      if (!response.ok) throw new Error(`Server error: ${response.status}`);
+    imageInput.addEventListener("change", () => {
+      const file = imageInput.files?.[0];
+      if (!file) return;
+      openCropper(file);
+    });
 
-      showStatus("Complaint submitted successfully. Thank you for keeping your community safe!", "success");
-      (document.getElementById("feedbackForm") as HTMLFormElement).reset();
-      latitude = null; longitude = null;
-      locationText.textContent = "No location selected";
-      locationStatus.classList.remove('has-location');
-      locationStatus.querySelector('.material-icons-round')!.textContent = 'location_off';
-      document.getElementById('imagePreviewWrap')!.style.display = 'none';
-      document.getElementById('fileDrop')!.style.display = 'flex';
-      document.querySelectorAll('.sev-btn').forEach((b,i) => b.classList.toggle('active', i === 3));
+    document.getElementById("removeImage").addEventListener("click", () => {
+      imageInput.value = "";
+      croppedBlob = null;
+      document.getElementById("imagePreviewWrap").style.display = "none";
+      document.getElementById("fileDrop").style.display = "flex";
+    });
 
-    } catch (err) {
-      showStatus("Submission failed. Please try again.", "error");
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = '<span class="material-icons-round">send</span>Submit Complaint';
+    const fileDrop = document.getElementById("fileDrop");
+    fileDrop.addEventListener("click", () => imageInput.click());
+    fileDrop.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      fileDrop.classList.add("drag-over");
+    });
+    fileDrop.addEventListener("dragleave", () => fileDrop.classList.remove("drag-over"));
+    fileDrop.addEventListener("drop", (e) => {
+      e.preventDefault();
+      fileDrop.classList.remove("drag-over");
+      const file = e.dataTransfer?.files?.[0];
+      if (file) openCropper(file);
+    });
+
+    function initCounter(inputId, counterId, max) {
+      const el = document.getElementById(inputId);
+      const counter = document.getElementById(counterId);
+
+      const update = () => {
+        const len = el.value.length;
+        counter.textContent = `${len} / ${max}`;
+        counter.classList.toggle("counter-warn", len >= max * 0.85);
+        counter.classList.toggle("counter-full", len >= max);
+      };
+
+      el.addEventListener("input", update);
+      update();
     }
-  });
 
-  function showStatus(msg: string, type: string) {
-    statusMessage.textContent = msg;
-    statusMessage.className = `status-msg ${type}`;
-    statusMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
-</script>
+    initCounter("vendorName", "vendorNameCounter", 60);
+    initCounter("description", "descCounter", 500);
 
-<style>
-  .submit-wrap { max-width: 780px; margin: auto; }
+    function setLocation(lat, lng) {
+      latitude = lat;
+      longitude = lng;
+      locationText.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      locationStatus.classList.add("has-location");
+      locationStatus.querySelector(".material-icons-round").textContent = "location_on";
+    }
 
-  .submit-header {
-    display: flex; align-items: center; gap: 1.25rem;
-    margin-bottom: 2.5rem;
-  }
-  .submit-icon {
-    width: 60px; height: 60px; border-radius: var(--radius);
-    background: var(--primary-glow); display: flex;
-    align-items: center; justify-content: center; flex-shrink: 0;
-  }
-  .submit-icon .material-icons-round { color: var(--primary); font-size: 1.8rem !important; }
-  .submit-header h1 { font-size: 2rem; margin-bottom: 0.25rem; }
-  .subtitle { color: var(--muted); font-size: 0.95rem; }
+    locationBtn.addEventListener("click", () => {
+      locationBtn.innerHTML = '<span class="material-icons-round">hourglass_empty</span>Locating...';
 
-  .submit-form { display: flex; flex-direction: column; gap: 1.75rem; }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLocation(pos.coords.latitude, pos.coords.longitude);
+          locationBtn.innerHTML = '<span class="material-icons-round">my_location</span>Use Current Location';
+        },
+        () => {
+          alert("Unable to access location.");
+          locationBtn.innerHTML = '<span class="material-icons-round">my_location</span>Use Current Location';
+        }
+      );
+    });
 
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-  @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+    async function uploadImage() {
+      return null;
+    }
 
-  .form-group { display: flex; flex-direction: column; gap: 0.6rem; }
-  .form-group label {
-    display: flex; align-items: center; gap: 0.4rem;
-    font-weight: 600; font-size: 0.9rem;
-  }
-  .form-group label .material-icons-round { font-size: 1rem !important; color: var(--primary); }
+    document.getElementById("feedbackForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-  .checkbox-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
-  .check-label {
-    display: flex; align-items: center; gap: 0.6rem;
-    cursor: pointer; padding: 0.6rem 0.9rem; border-radius: var(--radius-sm);
-    border: 1px solid var(--border2); background: var(--bg2);
-    font-size: 0.9rem; transition: all 0.2s;
-  }
-  .check-label:hover { border-color: var(--primary); background: var(--primary-glow); }
-  .check-label input[type="checkbox"] { display: none; }
-  .check-box {
-    width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0;
-    border: 2px solid var(--border2); background: var(--bg);
-    transition: all 0.2s; position: relative;
-  }
-  .check-label input:checked ~ .check-box {
-    background: var(--primary); border-color: var(--primary);
-  }
-  .check-label input:checked ~ .check-box::after {
-    content: ''; position: absolute; left: 4px; top: 1px;
-    width: 6px; height: 10px; border: 2px solid white;
-    border-top: none; border-left: none; transform: rotate(45deg);
-  }
+      const vendorName = document.getElementById("vendorName").value;
+      const vendorType = document.getElementById("vendorType").value;
+      const severity = document.getElementById("severity").value;
+      const description = document.getElementById("description").value;
+      const checkedIssues = Array.from(
+        document.querySelectorAll('input[type="checkbox"]:checked')
+      ).map((c) => c.value);
 
-  .severity-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-  .sev-btn {
-    padding: 0.5rem 1.25rem; border-radius: 999px;
-    border: 1px solid var(--border2); background: transparent;
-    color: var(--text2); font-size: 0.875rem; font-weight: 600; cursor: pointer;
-    transition: all 0.2s;
-  }
-  .sev-btn[data-val="Low"].active    { background: var(--low-bg);      color: var(--low);      border-color: var(--low); }
-  .sev-btn[data-val="Medium"].active { background: var(--medium-bg);   color: var(--medium);   border-color: var(--medium); }
-  .sev-btn[data-val="High"].active   { background: var(--high-bg);     color: var(--high);     border-color: var(--high); }
-  .sev-btn[data-val="Critical"].active { background: var(--critical-bg); color: var(--critical); border-color: var(--critical); }
-  .sev-btn:hover:not(.active) { background: var(--card2); border-color: var(--border2); }
+      if (description.trim().length < 10) {
+        showStatus("Description must be at least 10 characters.", "error");
+        return;
+      }
 
-  .file-drop {
-    display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
-    padding: 2rem; border: 2px dashed var(--border2); border-radius: var(--radius);
-    cursor: pointer; transition: all 0.2s; background: var(--bg2);
-    position: relative;
-  }
-  .file-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-  .file-drop:hover, .file-drop.drag-over { border-color: var(--primary); background: var(--primary-glow); }
-  .drop-icon { font-size: 2rem !important; color: var(--muted); }
-  .file-link { color: var(--primary); text-decoration: underline; cursor: pointer; }
-  .file-hint { font-size: 0.8rem; color: var(--muted); }
+      try {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML =
+          '<span class="material-icons-round">hourglass_empty</span>Submitting...';
 
-  .image-preview-wrap { position: relative; display: inline-block; }
-  .remove-img {
-    position: absolute; top: 0.5rem; right: 0.5rem;
-    background: rgba(0,0,0,0.6); color: white; border: none;
-    width: 30px; height: 30px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center; cursor: pointer;
-  }
-  .remove-img .material-icons-round { font-size: 0.9rem !important; }
+        const imageUrl = await uploadImage();
+        const apiUrl =
+          "https://worker-api.yatin-a-anchan.workers.dev";
 
-  .location-btns { display: flex; gap: 0.75rem; flex-wrap: wrap; }
-  .location-status {
-    display: flex; align-items: center; gap: 0.5rem;
-    color: var(--muted); font-size: 0.875rem; margin-top: 0.5rem;
-    padding: 0.6rem 0.9rem; border-radius: var(--radius-sm);
-    background: var(--bg2); border: 1px solid var(--border);
-    transition: all 0.2s;
-  }
-  .location-status.has-location { color: var(--low); border-color: rgba(34,197,94,0.2); background: var(--low-bg); }
-  .location-status .material-icons-round { font-size: 1rem !important; }
+        const response = await fetch(`${apiUrl}/api/submit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            vendor_name: vendorName,
+            vendor_type: vendorType,
+            issue_types: checkedIssues,
+            severity,
+            description,
+            image_url: imageUrl,
+            latitude,
+            longitude,
+          }),
+        });
 
-  .submit-btn { width: 100%; justify-content: center; padding: 1rem; font-size: 1rem; }
+        if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
-  .status-msg {
-    padding: 0.875rem 1rem; border-radius: var(--radius-sm);
-    font-size: 0.9rem; display: none;
-  }
-  .status-msg.success { display: block; background: var(--low-bg); color: var(--low); border: 1px solid rgba(34,197,94,0.2); }
-  .status-msg.error { display: block; background: var(--high-bg); color: var(--high); border: 1px solid rgba(239,68,68,0.2); }
+        showStatus(
+          "Complaint submitted successfully. Thank you for keeping your community safe!",
+          "success"
+        );
 
-  /* Map modal */
-  .map-modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-    z-index: 500; display: flex; align-items: center; justify-content: center;
-    opacity: 0; visibility: hidden; transition: all 0.3s; backdrop-filter: blur(6px);
-  }
-  .map-modal-overlay.active { opacity: 1; visibility: visible; }
-  .map-modal {
-    background: var(--card); border: 1px solid var(--border2);
-    border-radius: var(--radius-lg); width: 90%; max-width: 700px;
-    max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;
-    box-shadow: var(--shadow);
-  }
-  .map-modal-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
-  }
-  .map-modal-header h2 {
-    display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem;
-  }
-  .map-hint { padding: 0.75rem 1.5rem; color: var(--muted); font-size: 0.85rem; }
-  .close-modal {
-    background: var(--glass2); border: 1px solid var(--border2);
-    color: var(--text); width: 36px; height: 36px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center; cursor: pointer;
-  }
-  #pickerMap { height: 380px; flex: 1; }
-  .map-modal-footer {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 1rem 1.5rem; border-top: 1px solid var(--border); gap: 1rem; flex-wrap: wrap;
-  }
-  .picked-coords { color: var(--muted); font-size: 0.85rem; font-family: monospace; }
-</style>
+        document.getElementById("feedbackForm").reset();
+        croppedBlob = null;
+        originalFile = null;
+        latitude = null;
+        longitude = null;
+
+        locationText.textContent = "No location selected";
+        locationStatus.classList.remove("has-location");
+        locationStatus.querySelector(".material-icons-round").textContent = "location_off";
+
+        document.getElementById("imagePreviewWrap").style.display = "none";
+        document.getElementById("fileDrop").style.display = "flex";
+
+        document.querySelectorAll(".sev-btn").forEach((b, i) => b.classList.toggle("active", i === 3));
+        document.getElementById("severity").value = "Critical";
+        document.getElementById("vendorNameCounter").textContent = "0 / 60";
+        document.getElementById("descCounter").textContent = "0 / 500";
+      } catch (err) {
+        showStatus("Submission failed. Please try again.", "error");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span class="material-icons-round">send</span>Submit Complaint';
+      }
+    });
+
+    function showStatus(msg, type) {
+      statusMessage.textContent = msg;
+      statusMessage.className = `status-msg ${type}`;
+      statusMessage.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  </script>
+
+  <style>
+    .submit-wrap { max-width: 780px; margin: auto; }
+
+    .submit-header { display:flex; align-items:center; gap:1.25rem; margin-bottom:2.5rem; }
+    .submit-icon { width:60px; height:60px; border-radius:var(--radius); background:var(--primary-glow); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .submit-icon .material-icons-round { color:var(--primary); font-size:1.8rem !important; }
+    .submit-header h1 { font-size:2rem; margin-bottom:0.25rem; }
+    .subtitle { color:var(--muted); font-size:0.95rem; }
+
+    .submit-form { display:flex; flex-direction:column; gap:1.75rem; }
+
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; }
+    @media (max-width:600px) {
+      .form-row { grid-template-columns:1fr; }
+    }
+
+    .form-group { display:flex; flex-direction:column; gap:0.5rem; }
+    .form-group label { display:flex; align-items:center; gap:0.4rem; font-weight:600; font-size:0.9rem; }
+    .form-group label .material-icons-round { font-size:1rem !important; color:var(--primary); }
+
+    .char-counter {
+      align-self:flex-end;
+      font-size:0.75rem;
+      color:var(--muted);
+      transition:color 0.2s;
+      user-select:none;
+    }
+    .char-counter.counter-warn { color: var(--medium, #ca8a04); }
+    .char-counter.counter-full { color: var(--high, #dc2626); font-weight:700; }
+
+    .checkbox-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:0.6rem; }
+    .check-label {
+      display:flex;
+      align-items:center;
+      gap:0.6rem;
+      cursor:pointer;
+      padding:0.6rem 0.9rem;
+      border-radius:var(--radius-sm);
+      border:1px solid var(--border2);
+      background:var(--bg2);
+      font-size:0.9rem;
+      transition:all 0.2s;
+    }
+    .check-label:hover { border-color:var(--primary); background:var(--primary-glow); }
+    .check-label input[type="checkbox"] { display:none; }
+    .check-box {
+      width:18px;
+      height:18px;
+      border-radius:5px;
+      flex-shrink:0;
+      border:2px solid var(--border2);
+      background:var(--bg);
+      transition:all 0.2s;
+      position:relative;
+    }
+    .check-label input:checked ~ .check-box { background:var(--primary); border-color:var(--primary); }
+    .check-label input:checked ~ .check-box::after {
+      content:'';
+      position:absolute;
+      left:4px;
+      top:1px;
+      width:6px;
+      height:10px;
+      border:2px solid white;
+      border-top:none;
+      border-left:none;
+      transform:rotate(45deg);
+    }
+
+    .severity-btns { display:flex; gap:0.5rem; flex-wrap:wrap; }
+    .sev-btn {
+      padding:0.5rem 1.25rem;
+      border-radius:999px;
+      border:1px solid var(--border2);
+      background:transparent;
+      color:var(--text2);
+      font-size:0.875rem;
+      font-weight:600;
+      cursor:pointer;
+      transition:all 0.2s;
+    }
+    .sev-btn[data-val="Low"].active { background:var(--low-bg); color:var(--low); border-color:var(--low); }
+    .sev-btn[data-val="Medium"].active { background:var(--medium-bg); color:var(--medium); border-color:var(--medium); }
+    .sev-btn[data-val="High"].active { background:var(--high-bg); color:var(--high); border-color:var(--high); }
+    .sev-btn[data-val="Critical"].active { background:var(--critical-bg); color:var(--critical); border-color:var(--critical); }
+    .sev-btn:hover:not(.active) { background:var(--card2); border-color:var(--border2); }
+
+    .file-drop {
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:0.5rem;
+      padding:2rem;
+      border:2px dashed var(--border2);
+      border-radius:var(--radius);
+      cursor:pointer;
+      transition:all 0.2s;
+      background:var(--bg2);
+      position:relative;
+    }
+    .file-drop input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+    .file-drop:hover, .file-drop.drag-over { border-color:var(--primary); background:var(--primary-glow); }
+    .drop-icon { font-size:2rem !important; color:var(--muted); }
+    .file-link { color:var(--primary); text-decoration:underline; cursor:pointer; }
+    .file-hint { font-size:0.8rem; color:var(--muted); }
+
+    .image-preview-wrap {
+      display:flex !important;
+      align-items:center;
+      gap:0.75rem;
+      padding:0.75rem;
+      background:var(--bg2);
+      border:1px solid var(--border2);
+      border-radius:var(--radius);
+    }
+    .img-cropped-preview {
+      display:block !important;
+      width:80px !important;
+      height:80px !important;
+      min-width:80px !important;
+      max-width:80px !important;
+      min-height:80px !important;
+      max-height:80px !important;
+      object-fit:cover !important;
+      border-radius:10px !important;
+      flex-shrink:0 !important;
+    }
+    .remove-img {
+      background:rgba(0,0,0,0.5);
+      color:white;
+      border:none;
+      width:30px;
+      height:30px;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      transition:background 0.15s;
+    }
+    .remove-img:hover { background:var(--high); }
+    .remove-img .material-icons-round { font-size:0.9rem !important; }
+    .recrop-btn {
+      display:inline-flex;
+      align-items:center;
+      gap:0.3rem;
+      padding:0.35rem 0.8rem;
+      font-size:0.8rem;
+      border-radius:var(--radius-sm);
+      border:1px solid var(--border2);
+      background:transparent;
+      color:var(--primary);
+      cursor:pointer;
+      transition:background 0.15s;
+    }
+    .recrop-btn:hover { background:var(--primary-glow); }
+    .recrop-btn .material-icons-round { font-size:0.9rem !important; }
+
+    .location-btns { display:flex; gap:0.75rem; flex-wrap:wrap; }
+    .location-status {
+      display:flex;
+      align-items:center;
+      gap:0.5rem;
+      color:var(--muted);
+      font-size:0.875rem;
+      margin-top:0.25rem;
+      padding:0.6rem 0.9rem;
+      border-radius:var(--radius-sm);
+      background:var(--bg2);
+      border:1px solid var(--border);
+      transition:all 0.2s;
+    }
+    .location-status.has-location {
+      color:var(--low);
+      border-color:rgba(34,197,94,0.2);
+      background:var(--low-bg);
+    }
+    .location-status .material-icons-round { font-size:1rem !important; }
+
+    .submit-btn { width:100%; justify-content:center; padding:1rem; font-size:1rem; }
+
+    .status-msg { padding:0.875rem 1rem; border-radius:var(--radius-sm); font-size:0.9rem; display:none; }
+    .status-msg.success { display:block; background:var(--low-bg); color:var(--low); border:1px solid rgba(34,197,94,0.2); }
+    .status-msg.error { display:block; background:var(--high-bg); color:var(--high); border:1px solid rgba(239,68,68,0.2); }
+
+    .crop-modal-overlay {
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.85);
+      z-index:600;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      opacity:0;
+      visibility:hidden;
+      transition:all 0.3s;
+      backdrop-filter:blur(8px);
+    }
+    .crop-modal-overlay.active { opacity:1; visibility:visible; }
+    .crop-modal {
+      background:var(--card);
+      border:1px solid var(--border2);
+      border-radius:var(--radius-lg);
+      width:min(92vw,480px);
+      display:flex;
+      flex-direction:column;
+      gap:1.25rem;
+      padding:1.5rem;
+      box-shadow:var(--shadow);
+    }
+    .crop-modal-header { display:flex; flex-direction:column; gap:0.25rem; }
+    .crop-modal-header h2 {
+      display:flex;
+      align-items:center;
+      gap:0.5rem;
+      font-size:1.05rem;
+      margin:0;
+    }
+    .crop-hint { color:var(--muted); font-size:0.8rem; margin:0; }
+
+    .crop-canvas-wrap {
+      position:relative;
+      border-radius:var(--radius);
+      overflow:hidden;
+      line-height:0;
+      background:repeating-conic-gradient(#444 0% 25%, #222 0% 50%) 0 0 / 20px 20px;
+    }
+    #cropCanvas {
+      display:block;
+      width:100%;
+      height:auto;
+      aspect-ratio:1 / 1;
+      cursor:grab;
+      touch-action:none;
+    }
+
+    .crop-overlay { position:absolute; inset:0; pointer-events:none; }
+    .crop-frame {
+      position:absolute;
+      inset:8px;
+      border:2px dashed rgba(255,255,255,0.5);
+      border-radius:4px;
+      box-shadow:0 0 0 9999px rgba(0,0,0,0.35);
+    }
+
+    .crop-controls { display:flex; flex-direction:column; gap:0.75rem; }
+    .zoom-slider { width:100%; accent-color:var(--primary); cursor:pointer; }
+    .crop-actions { display:flex; gap:0.75rem; justify-content:flex-end; }
+
+    @media (max-width: 640px) {
+      .checkbox-grid { grid-template-columns:1fr; }
+      .crop-actions { flex-direction:column; }
+      .crop-actions button { width:100%; }
+    }
+  </style>
+</MainLayout>
