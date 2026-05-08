@@ -22,7 +22,7 @@ The system is designed with a **serverless-first architecture** using Cloudflare
 
 ### 👤 Public Platform
 
-* Anonymous complaint submission
+* Anonymous complaint (feedback) submission
 * Vendor classification system
 * Severity tagging (Low → Critical)
 * Image evidence upload (Supabase Storage)
