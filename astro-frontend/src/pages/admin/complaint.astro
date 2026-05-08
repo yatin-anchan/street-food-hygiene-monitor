@@ -153,10 +153,7 @@ import MainLayout from "../../layouts/MainLayout.astro";
                 <div class="divider"></div>
 
                 <!-- Meta grid -->
-                <span style="font-size: 14px; color: var(--muted); font-family: var(--font-body);"><i>Use the dropdown to update the complaint status. Changes are saved immediately.</i></span>
-                <div class="meta-grid">
-                    <select id="statusSelect" class="status-select" onchange="window.updateStatus()">
-                        ${statusOptionsHtml}
+                
           </select>
                     <div class="meta-card" style="display:flex; flex-direction:column; gap:4px; margin-bottom:0.5rem; margin-top:0.5rem;">
                         <div class="meta-label"><span class="material-icons-round">schedule</span> <b> Reported On -</b> ${new Date(complaint.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</div>
