@@ -153,19 +153,9 @@ import MainLayout from "../../layouts/MainLayout.astro";
                 <div class="divider"></div>
 
                 <!-- Meta grid -->
-                <div class="meta-grid" style="margin-bottom:1.5rem;">
-                    <div class="meta-card status-card" style="margin-bottom:1.5rem;">
-                        <div class="meta-label" style="display:flex; align-items:center; gap:8px; margin-bottom:0.5rem;"><span class="material-icons-round">pending</span> Status</div>
-                        <div class="status-row" style="display:flex; width:95%; align-items:center; gap:8px;"margin-bottom:0.5rem;">
-                            <select id="statusSelect" class="status-select" aria-label="Update status">
-                                ${statusOptionsHtml}
-                            </select>
-                            <button class="update-btn" onclick="updateStatus()" style="margin-bottom:0.5rem; background:none; align-items:center; gap:8px;" title="Save status">
-                                <span class="material-icons-round">save</span>
-                                Save
-                            </button>
-                        </div>
-                    </div>
+                <select class="status-select" style="margin-bottom: 0.5rem; margin-top: 0.5rem;" onchange="window.updateStatus(${c.id}, this.value)">
+            ${STATUSES.map(s => `<option value="${s}" ${complaint.status === s ? "selected" : ""}>${s}</option>`).join('')}
+          </select>
                     <div class="meta-card" style="display:flex; flex-direction:column; gap:4px; margin-bottom:0.5rem; margin-top:0.5rem;">
                         <div class="meta-label"><span class="material-icons-round">schedule</span> <b> Reported On -</b> ${new Date(complaint.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</div>
                     </div>
