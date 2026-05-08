@@ -1,302 +1,475 @@
 ---
 import MainLayout from "../layouts/MainLayout.astro";
 ---
-
-<MainLayout title="Report Hygiene Issue">
-
-    <section>
-        <div class="container">
-
-            <div class="submit-wrapper card">
-
-                <h1>
-                    Report Street Food Hygiene Issue
-                </h1>
-
-                <p class="subtitle">
-                    Help improve food safety in your area.
-                </p>
-
-                <form id="feedbackForm">
-
-                    <div class="form-group">
-                        <label for="vendorName">Vendor Name</label>
-                        <input
-                                type="text"
-                                id="vendorName"
-                                placeholder="Sharma Vada Pav"
-                        />
-                    </div>
-
-                    <div class="form-group">
-                        <label for="vendorType">Vendor Type</label>
-                        <select id="vendorType">
-                            <option>Street Cart</option>
-                            <option>Food Truck</option>
-                            <option>Tea Stall</option>
-                            <option>Juice Center</option>
-                            <option>Small Restaurant</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Hygiene Issues</label>
-                        <div class="checkbox-grid">
-                            <label>
-                                <input type="checkbox" value="Dirty utensils" />
-                                Dirty utensils
-                            </label>
-                            <label>
-                                <input type="checkbox" value="Spoiled food" />
-                                Spoiled food
-                            </label>
-                            <label>
-                                <input type="checkbox" value="Insects" />
-                                Insects
-                            </label>
-                            <label>
-                                <input type="checkbox" value="No gloves" />
-                                No gloves
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="severity">Severity</label>
-                        <select id="severity">
-                            <option>Low</option>
-                            <option>Medium</option>
-                            <option>High</option>
-                            <option>Critical</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="image">Upload Evidence Image</label>
-                        <input type="file" id="image" accept="image/*" />
-                    </div>
-
-                    <div class="form-group">
-                        <label for="description">Detailed Description</label>
-                        <textarea
-                                id="description"
-                                placeholder="Describe hygiene issue..."
-                        ></textarea>
-                    </div>
-
-                    <button type="button" class="primary-btn" id="locationBtn">
-                        Use Current Location
-                    </button>
-
-                    <p id="locationText">No location selected</p>
-
-                    <button type="submit" class="primary-btn submit-btn" id="submitBtn">
-                        Submit Complaint
-                    </button>
-
-                    <p id="statusMessage"></p>
-
-                </form>
-
-            </div>
-
+<MainLayout title="Report Issue">
+  <section>
+    <div class="container">
+      <div class="submit-wrap">
+        <div class="submit-header">
+          <div class="submit-icon">
+            <span class="material-icons-round">report_problem</span>
+          </div>
+          <div>
+            <h1>Report a Hygiene Issue</h1>
+            <p class="subtitle">Help improve food safety in your area. Reports are anonymous.</p>
+          </div>
         </div>
-    </section>
 
+        <form id="feedbackForm" class="card submit-form" novalidate>
+          <!-- Row 1 -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="vendorName">
+                <span class="material-icons-round">store</span>
+                Vendor Name
+              </label>
+              <input type="text" id="vendorName" placeholder="e.g. Sharma Vada Pav" autocomplete="off" />
+            </div>
+            <div class="form-group">
+              <label for="vendorType">
+                <span class="material-icons-round">category</span>
+                Vendor Type
+              </label>
+              <select id="vendorType">
+                <option>Street Cart</option>
+                <option>Food Truck</option>
+                <option>Tea Stall</option>
+                <option>Juice Center</option>
+                <option>Small Restaurant</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Issues -->
+          <div class="form-group">
+            <label><span class="material-icons-round">bug_report</span>Hygiene Issues Observed</label>
+            <div class="checkbox-grid">
+              {["Dirty utensils","Spoiled food","Insects","No gloves","Open drain nearby","No hand washing"].map(issue => (
+                <label class="check-label">
+                  <input type="checkbox" value={issue} />
+                  <span class="check-box"></span>
+                  {issue}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <!-- Severity -->
+          <div class="form-group">
+            <label for="severity">
+              <span class="material-icons-round">priority_high</span>
+              Severity Level
+            </label>
+            <div class="severity-btns" id="severityBtns">
+              <button type="button" class="sev-btn" data-val="Low">Low</button>
+              <button type="button" class="sev-btn" data-val="Medium">Medium</button>
+              <button type="button" class="sev-btn" data-val="High">High</button>
+              <button type="button" class="sev-btn active" data-val="Critical">Critical</button>
+            </div>
+            <input type="hidden" id="severity" value="Critical" />
+          </div>
+
+          <!-- Image -->
+          <div class="form-group">
+            <label for="image">
+              <span class="material-icons-round">photo_camera</span>
+              Upload Evidence Image
+            </label>
+            <div class="file-drop" id="fileDrop">
+              <span class="material-icons-round drop-icon">cloud_upload</span>
+              <p>Drag & drop or <span class="file-link">browse files</span></p>
+              <p class="file-hint">JPG, PNG up to 10MB</p>
+              <input type="file" id="image" accept="image/*" />
+            </div>
+            <div id="imagePreviewWrap" class="image-preview-wrap" style="display:none">
+              <img id="imagePreview" class="img-fixed" src="" alt="Preview" style="height:160px;border-radius:var(--radius-sm)" />
+              <button type="button" id="removeImage" class="remove-img">
+                <span class="material-icons-round">close</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="form-group">
+            <label for="description">
+              <span class="material-icons-round">description</span>
+              Detailed Description
+            </label>
+            <textarea id="description" placeholder="Describe what you observed. Be specific about date, time, and conditions..."></textarea>
+          </div>
+
+          <!-- Location -->
+          <div class="form-group">
+            <label><span class="material-icons-round">location_on</span>Location</label>
+            <div class="location-btns">
+              <button type="button" class="secondary-btn" id="locationBtn">
+                <span class="material-icons-round">my_location</span>
+                Use Current Location
+              </button>
+              <button type="button" class="secondary-btn" id="pickMapBtn">
+                <span class="material-icons-round">map</span>
+                Pick on Map
+              </button>
+            </div>
+            <div class="location-status" id="locationStatus">
+              <span class="material-icons-round">location_off</span>
+              <span id="locationText">No location selected</span>
+            </div>
+          </div>
+
+          <button type="submit" class="primary-btn submit-btn" id="submitBtn">
+            <span class="material-icons-round">send</span>
+            Submit Complaint
+          </button>
+
+          <p id="statusMessage" class="status-msg"></p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Map Picker Modal -->
+  <div class="map-modal-overlay" id="mapModalOverlay">
+    <div class="map-modal">
+      <div class="map-modal-header">
+        <h2><span class="material-icons-round">map</span>Pick Location on Map</h2>
+        <button id="closeMapModal" class="close-modal">
+          <span class="material-icons-round">close</span>
+        </button>
+      </div>
+      <p class="map-hint">Click anywhere on the map to drop a pin and set the complaint location.</p>
+      <div id="pickerMap"></div>
+      <div class="map-modal-footer">
+        <span id="pickedCoords" class="picked-coords">No location picked yet</span>
+        <button id="confirmMapBtn" class="primary-btn" disabled>
+          <span class="material-icons-round">check</span>
+          Confirm Location
+        </button>
+      </div>
+    </div>
+  </div>
 </MainLayout>
 
 <script>
-    import { supabase } from "../utils/supabase";
+  import { supabase } from "../utils/supabase";
 
-    const form = document.getElementById("feedbackForm") as HTMLFormElement;
-    const statusMessage = document.getElementById("statusMessage")!;
-    const submitBtn = document.getElementById("submitBtn") as HTMLButtonElement;
-    const imageInput = document.getElementById("image") as HTMLInputElement;
-    const locationBtn = document.getElementById("locationBtn") as HTMLButtonElement;
-    const locationText = document.getElementById("locationText")!;
+  const statusMessage = document.getElementById("statusMessage")!;
+  const submitBtn = document.getElementById("submitBtn") as HTMLButtonElement;
+  const imageInput = document.getElementById("image") as HTMLInputElement;
+  const locationBtn = document.getElementById("locationBtn") as HTMLButtonElement;
+  const pickMapBtn = document.getElementById("pickMapBtn") as HTMLButtonElement;
+  const locationText = document.getElementById("locationText")!;
+  const locationStatus = document.getElementById("locationStatus")!;
 
-    let latitude: number | null = null;
-    let longitude: number | null = null;
+  let latitude: number | null = null;
+  let longitude: number | null = null;
+  let pickerMap: any = null;
+  let pickerMarker: any = null;
+  let pendingLat: number | null = null;
+  let pendingLng: number | null = null;
 
-    // ======================
-    // LOCATION
-    // ======================
-
-    locationBtn.addEventListener("click", () => {
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                latitude = position.coords.latitude;
-                longitude = position.coords.longitude;
-                locationText.textContent = `Location selected: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-            },
-            () => {
-                alert("Unable to access location");
-            }
-        );
+  // ── Severity buttons ──
+  document.querySelectorAll('.sev-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.sev-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      (document.getElementById('severity') as HTMLInputElement).value = (btn as HTMLElement).dataset.val!;
     });
+  });
 
-    // ======================
-    // IMAGE UPLOAD
-    // ======================
+  // ── Image preview ──
+  imageInput.addEventListener('change', () => {
+    const file = imageInput.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const wrap = document.getElementById('imagePreviewWrap')!;
+      const prev = document.getElementById('imagePreview') as HTMLImageElement;
+      prev.src = e.target!.result as string;
+      wrap.style.display = 'block';
+      document.getElementById('fileDrop')!.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  });
 
-    async function uploadImage(file: File): Promise<string | null> {
-        if (!file) return null;
+  document.getElementById('removeImage')!.addEventListener('click', () => {
+    imageInput.value = '';
+    document.getElementById('imagePreviewWrap')!.style.display = 'none';
+    document.getElementById('fileDrop')!.style.display = 'flex';
+  });
 
-        const fileName = `${Date.now()}-${file.name}`;
+  // ── File drop zone ──
+  const fileDrop = document.getElementById('fileDrop')!;
+  fileDrop.addEventListener('click', () => imageInput.click());
+  fileDrop.addEventListener('dragover', (e) => { e.preventDefault(); fileDrop.classList.add('drag-over'); });
+  fileDrop.addEventListener('dragleave', () => fileDrop.classList.remove('drag-over'));
+  fileDrop.addEventListener('drop', (e: any) => {
+    e.preventDefault(); fileDrop.classList.remove('drag-over');
+    const dt = e.dataTransfer;
+    if (dt.files[0]) { const list = dt.files; (imageInput as any).files = list; imageInput.dispatchEvent(new Event('change')); }
+  });
 
-        const { error } = await supabase.storage
-            .from("complaint-images")
-            .upload(fileName, file);
+  // ── Current location ──
+  function setLocation(lat: number, lng: number) {
+    latitude = lat; longitude = lng;
+    locationText.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    locationStatus.classList.add('has-location');
+    locationStatus.querySelector('.material-icons-round')!.textContent = 'location_on';
+  }
 
-        if (error) {
-            throw new Error("Image upload failed");
-        }
+  locationBtn.addEventListener('click', () => {
+    locationBtn.textContent = 'Locating...';
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setLocation(pos.coords.latitude, pos.coords.longitude); locationBtn.innerHTML = '<span class="material-icons-round">my_location</span>Use Current Location'; },
+      () => { alert('Unable to access location. Please allow location access.'); locationBtn.innerHTML = '<span class="material-icons-round">my_location</span>Use Current Location'; }
+    );
+  });
 
-        const { data } = supabase.storage
-            .from("complaint-images")
-            .getPublicUrl(fileName);
+  // ── Map picker ──
+  const overlay = document.getElementById('mapModalOverlay')!;
+  const pickedCoords = document.getElementById('pickedCoords')!;
+  const confirmBtn = document.getElementById('confirmMapBtn') as HTMLButtonElement;
 
-        return data.publicUrl;
+  pickMapBtn.addEventListener('click', () => {
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+
+    setTimeout(() => {
+      if (!pickerMap) {
+        pickerMap = (window as any).L.map('pickerMap').setView([20.5937, 78.9629], 5);
+        (window as any).L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap'
+        }).addTo(pickerMap);
+
+        pickerMap.on('click', (e: any) => {
+          pendingLat = e.latlng.lat; pendingLng = e.latlng.lng;
+          if (pickerMarker) pickerMarker.remove();
+          pickerMarker = (window as any).L.circleMarker([pendingLat, pendingLng], {
+            radius: 10, color: '#4f8ef7', fillColor: '#4f8ef7', fillOpacity: 0.85
+          }).addTo(pickerMap).bindPopup('📍 Complaint location').openPopup();
+          pickedCoords.textContent = `${pendingLat!.toFixed(5)}, ${pendingLng!.toFixed(5)}`;
+          confirmBtn.disabled = false;
+        });
+      }
+      pickerMap.invalidateSize();
+    }, 100);
+  });
+
+  document.getElementById('closeMapModal')!.addEventListener('click', () => {
+    overlay.classList.remove('active');
+    document.body.style.overflow = '';
+  });
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) { overlay.classList.remove('active'); document.body.style.overflow = ''; } });
+
+  confirmBtn.addEventListener('click', () => {
+    if (pendingLat !== null && pendingLng !== null) {
+      setLocation(pendingLat, pendingLng);
+      overlay.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+  });
+
+  // ── Image upload ──
+  async function uploadImage(file: File): Promise<string | null> {
+    if (!file) return null;
+    const fileName = `${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from("complaint-images").upload(fileName, file);
+    if (error) throw new Error("Image upload failed");
+    const { data } = supabase.storage.from("complaint-images").getPublicUrl(fileName);
+    return data.publicUrl;
+  }
+
+  // ── Submit ──
+  document.getElementById("feedbackForm")!.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const vendorName = (document.getElementById("vendorName") as HTMLInputElement).value;
+    const vendorType = (document.getElementById("vendorType") as HTMLSelectElement).value;
+    const severity = (document.getElementById("severity") as HTMLInputElement).value;
+    const description = (document.getElementById("description") as HTMLTextAreaElement).value;
+    const checkedIssues = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:checked')).map(c => c.value);
+    const imageFile = imageInput.files?.[0];
+
+    if (description.trim().length < 10) {
+      showStatus("Description must be at least 10 characters.", "error");
+      return;
     }
 
-    // ======================
-    // FORM SUBMIT
-    // ======================
+    try {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="material-icons-round">hourglass_empty</span>Submitting...';
+      let imageUrl: string | null = null;
+      if (imageFile) imageUrl = await uploadImage(imageFile);
 
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
+      const apiUrl = import.meta.env.VITE_API_URL ?? "https://worker-api.yatin-a-anchan.workers.dev";
+      const response = await fetch(`${apiUrl}/api/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vendor_name: vendorName, vendor_type: vendorType, issue_types: checkedIssues, severity, description, image_url: imageUrl, latitude, longitude }),
+      });
 
-        const vendorName = (document.getElementById("vendorName") as HTMLInputElement).value;
-        const vendorType = (document.getElementById("vendorType") as HTMLSelectElement).value;
-        const severity = (document.getElementById("severity") as HTMLSelectElement).value;
-        const description = (document.getElementById("description") as HTMLTextAreaElement).value;
+      if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
-        const checkedIssues = Array.from(
-            document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:checked')
-        ).map((checkbox) => checkbox.value);
+      showStatus("Complaint submitted successfully. Thank you for keeping your community safe!", "success");
+      (document.getElementById("feedbackForm") as HTMLFormElement).reset();
+      latitude = null; longitude = null;
+      locationText.textContent = "No location selected";
+      locationStatus.classList.remove('has-location');
+      locationStatus.querySelector('.material-icons-round')!.textContent = 'location_off';
+      document.getElementById('imagePreviewWrap')!.style.display = 'none';
+      document.getElementById('fileDrop')!.style.display = 'flex';
+      document.querySelectorAll('.sev-btn').forEach((b,i) => b.classList.toggle('active', i === 3));
 
-        const imageFile = imageInput.files?.[0];
+    } catch (err) {
+      showStatus("Submission failed. Please try again.", "error");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span class="material-icons-round">send</span>Submit Complaint';
+    }
+  });
 
-        // VALIDATION
-        if (description.trim().length < 10) {
-            statusMessage.textContent = "Description too short.";
-            statusMessage.className = "error";
-            return;
-        }
-
-        try {
-            submitBtn.disabled = true;
-            submitBtn.textContent = "Submitting...";
-
-            let imageUrl: string | null = null;
-
-            if (imageFile) {
-                imageUrl = await uploadImage(imageFile);
-            }
-
-            // Use env variable for API URL — set VITE_API_URL in your .env file
-            const apiUrl = import.meta.env.VITE_API_URL ?? "https://worker-api.yatin-a-anchan.workers.dev";
-
-            const response = await fetch(`${apiUrl}/api/submit`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    vendor_name: vendorName,
-                    vendor_type: vendorType,
-                    issue_types: checkedIssues,
-                    severity,
-                    description,
-                    image_url: imageUrl,
-                    latitude,
-                    longitude,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`Server error: ${response.status}`);
-            }
-
-            statusMessage.textContent = "Complaint submitted successfully.";
-            statusMessage.className = "success";
-            form.reset();
-            latitude = null;
-            longitude = null;
-            locationText.textContent = "No location selected";
-
-        } catch (err) {
-            console.error(err);
-            statusMessage.textContent = "Submission failed. Please try again.";
-            statusMessage.className = "error";
-
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Submit Complaint";
-        }
-    });
+  function showStatus(msg: string, type: string) {
+    statusMessage.textContent = msg;
+    statusMessage.className = `status-msg ${type}`;
+    statusMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 </script>
 
 <style>
-    .submit-wrapper {
-        max-width: 700px;
-        margin: auto;
-    }
+  .submit-wrap { max-width: 780px; margin: auto; }
 
-    .submit-wrapper h1 {
-        margin-bottom: 1rem;
-        font-size: 2.5rem;
-    }
+  .submit-header {
+    display: flex; align-items: center; gap: 1.25rem;
+    margin-bottom: 2.5rem;
+  }
+  .submit-icon {
+    width: 60px; height: 60px; border-radius: var(--radius);
+    background: var(--primary-glow); display: flex;
+    align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .submit-icon .material-icons-round { color: var(--primary); font-size: 1.8rem !important; }
+  .submit-header h1 { font-size: 2rem; margin-bottom: 0.25rem; }
+  .subtitle { color: var(--muted); font-size: 0.95rem; }
 
-    .subtitle {
-        color: var(--muted);
-        margin-bottom: 2rem;
-    }
+  .submit-form { display: flex; flex-direction: column; gap: 1.75rem; }
 
-    .form-group {
-        margin-bottom: 1.5rem;
-    }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
 
-    label {
-        display: block;
-        margin-bottom: 0.5rem;
-        font-weight: 600;
-    }
+  .form-group { display: flex; flex-direction: column; gap: 0.6rem; }
+  .form-group label {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-weight: 600; font-size: 0.9rem;
+  }
+  .form-group label .material-icons-round { font-size: 1rem !important; color: var(--primary); }
 
-    input,
-    textarea,
-    select {
-        width: 100%;
-        padding: 1rem;
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        background: var(--card);
-        color: var(--text);
-    }
+  .checkbox-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+  .check-label {
+    display: flex; align-items: center; gap: 0.6rem;
+    cursor: pointer; padding: 0.6rem 0.9rem; border-radius: var(--radius-sm);
+    border: 1px solid var(--border2); background: var(--bg2);
+    font-size: 0.9rem; transition: all 0.2s;
+  }
+  .check-label:hover { border-color: var(--primary); background: var(--primary-glow); }
+  .check-label input[type="checkbox"] { display: none; }
+  .check-box {
+    width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0;
+    border: 2px solid var(--border2); background: var(--bg);
+    transition: all 0.2s; position: relative;
+  }
+  .check-label input:checked ~ .check-box {
+    background: var(--primary); border-color: var(--primary);
+  }
+  .check-label input:checked ~ .check-box::after {
+    content: ''; position: absolute; left: 4px; top: 1px;
+    width: 6px; height: 10px; border: 2px solid white;
+    border-top: none; border-left: none; transform: rotate(45deg);
+  }
 
-    textarea {
-        min-height: 150px;
-        resize: vertical;
-    }
+  .severity-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .sev-btn {
+    padding: 0.5rem 1.25rem; border-radius: 999px;
+    border: 1px solid var(--border2); background: transparent;
+    color: var(--text2); font-size: 0.875rem; font-weight: 600; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .sev-btn[data-val="Low"].active    { background: var(--low-bg);      color: var(--low);      border-color: var(--low); }
+  .sev-btn[data-val="Medium"].active { background: var(--medium-bg);   color: var(--medium);   border-color: var(--medium); }
+  .sev-btn[data-val="High"].active   { background: var(--high-bg);     color: var(--high);     border-color: var(--high); }
+  .sev-btn[data-val="Critical"].active { background: var(--critical-bg); color: var(--critical); border-color: var(--critical); }
+  .sev-btn:hover:not(.active) { background: var(--card2); border-color: var(--border2); }
 
-    .checkbox-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-    }
+  .file-drop {
+    display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+    padding: 2rem; border: 2px dashed var(--border2); border-radius: var(--radius);
+    cursor: pointer; transition: all 0.2s; background: var(--bg2);
+    position: relative;
+  }
+  .file-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .file-drop:hover, .file-drop.drag-over { border-color: var(--primary); background: var(--primary-glow); }
+  .drop-icon { font-size: 2rem !important; color: var(--muted); }
+  .file-link { color: var(--primary); text-decoration: underline; cursor: pointer; }
+  .file-hint { font-size: 0.8rem; color: var(--muted); }
 
-    .submit-btn {
-        width: 100%;
-        margin-top: 1.5rem;
-    }
+  .image-preview-wrap { position: relative; display: inline-block; }
+  .remove-img {
+    position: absolute; top: 0.5rem; right: 0.5rem;
+    background: rgba(0,0,0,0.6); color: white; border: none;
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .remove-img .material-icons-round { font-size: 0.9rem !important; }
 
-    .success {
-        color: #22c55e;
-        margin-top: 1rem;
-    }
+  .location-btns { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .location-status {
+    display: flex; align-items: center; gap: 0.5rem;
+    color: var(--muted); font-size: 0.875rem; margin-top: 0.5rem;
+    padding: 0.6rem 0.9rem; border-radius: var(--radius-sm);
+    background: var(--bg2); border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+  .location-status.has-location { color: var(--low); border-color: rgba(34,197,94,0.2); background: var(--low-bg); }
+  .location-status .material-icons-round { font-size: 1rem !important; }
 
-    .error {
-        color: #ef4444;
-        margin-top: 1rem;
-    }
+  .submit-btn { width: 100%; justify-content: center; padding: 1rem; font-size: 1rem; }
+
+  .status-msg {
+    padding: 0.875rem 1rem; border-radius: var(--radius-sm);
+    font-size: 0.9rem; display: none;
+  }
+  .status-msg.success { display: block; background: var(--low-bg); color: var(--low); border: 1px solid rgba(34,197,94,0.2); }
+  .status-msg.error { display: block; background: var(--high-bg); color: var(--high); border: 1px solid rgba(239,68,68,0.2); }
+
+  /* Map modal */
+  .map-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 500; display: flex; align-items: center; justify-content: center;
+    opacity: 0; visibility: hidden; transition: all 0.3s; backdrop-filter: blur(6px);
+  }
+  .map-modal-overlay.active { opacity: 1; visibility: visible; }
+  .map-modal {
+    background: var(--card); border: 1px solid var(--border2);
+    border-radius: var(--radius-lg); width: 90%; max-width: 700px;
+    max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;
+    box-shadow: var(--shadow);
+  }
+  .map-modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
+  }
+  .map-modal-header h2 {
+    display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem;
+  }
+  .map-hint { padding: 0.75rem 1.5rem; color: var(--muted); font-size: 0.85rem; }
+  .close-modal {
+    background: var(--glass2); border: 1px solid var(--border2);
+    color: var(--text); width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  #pickerMap { height: 380px; flex: 1; }
+  .map-modal-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 1.5rem; border-top: 1px solid var(--border); gap: 1rem; flex-wrap: wrap;
+  }
+  .picked-coords { color: var(--muted); font-size: 0.85rem; font-family: monospace; }
 </style>

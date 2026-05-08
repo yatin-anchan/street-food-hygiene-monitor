@@ -1,3 +1,68 @@
 ---
-
+import MainLayout from "../layouts/MainLayout.astro";
+const rules = [
+  { icon: "fact_check", title: "Report Real Issues", desc: "Only submit complaints about genuine hygiene violations you have personally witnessed. False reports harm vendors and undermine the platform." },
+  { icon: "photo_camera", title: "Include Evidence", desc: "Attach a photo when possible. Visual evidence makes complaints more credible and increases the chance of action being taken." },
+  { icon: "location_on", title: "Tag Your Location", desc: "Always geo-tag your report. Precise location data helps authorities find and inspect the correct vendor quickly." },
+  { icon: "description", title: "Be Specific", desc: "Describe exactly what you observed — the date, time, specific issue, and any context. Vague reports are harder to act on." },
+  { icon: "person_off", title: "Respect Privacy", desc: "Do not include personal details about individuals, staff, or other customers in your report. Focus on the hygiene issue only." },
+  { icon: "block", title: "No Harassment", desc: "This platform is for food safety reporting only. Targeted harassment, defamation, or abuse of the system will result in reports being dismissed." },
+];
 ---
+<MainLayout title="Guidelines">
+  <section>
+    <div class="container guide-wrap">
+      <div class="guide-header">
+        <span class="badge badge-blue"><span class="material-icons-round">gavel</span>Community Guidelines</span>
+        <h1>Reporting Guidelines</h1>
+        <p>Follow these principles to ensure your report has maximum impact and is handled fairly.</p>
+      </div>
+
+      <div class="rules-grid">
+        {rules.map((rule, i) => (
+          <div class="rule-card card">
+            <div class="rule-num">{String(i + 1).padStart(2, '0')}</div>
+            <div class="rule-icon-wrap">
+              <span class="material-icons-round">{rule.icon}</span>
+            </div>
+            <h3>{rule.title}</h3>
+            <p>{rule.desc}</p>
+          </div>
+        ))}
+      </div>
+
+      <div class="guide-cta card">
+        <h2>Ready to make a report?</h2>
+        <p>Your complaint helps keep your community safer. It takes less than 2 minutes.</p>
+        <a href="/submit" class="primary-btn">
+          <span class="material-icons-round">report</span>
+          Submit a Complaint
+        </a>
+      </div>
+    </div>
+  </section>
+</MainLayout>
+
+<style>
+  .guide-wrap { max-width: 1000px; margin: auto; }
+  .guide-header { text-align: center; margin-bottom: 3rem; }
+  .guide-header h1 { font-size: clamp(2rem, 4vw, 3rem); margin: 1rem 0 0.75rem; }
+  .guide-header p { color: var(--muted); max-width: 500px; margin: auto; }
+
+  .rules-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 2rem; }
+  .rule-card { position: relative; overflow: hidden; transition: all 0.2s; }
+  .rule-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: var(--border2); }
+  .rule-num { position: absolute; top: 1.25rem; right: 1.5rem; font-size: 2.5rem; font-weight: 800; color: var(--border2); font-family: 'Plus Jakarta Sans', sans-serif; line-height: 1; }
+  .rule-icon-wrap {
+    width: 44px; height: 44px; border-radius: var(--radius-sm);
+    background: var(--primary-glow); display: flex; align-items: center; justify-content: center;
+    margin-bottom: 1rem;
+  }
+  .rule-icon-wrap .material-icons-round { color: var(--primary); font-size: 1.4rem !important; }
+  .rule-card h3 { margin-bottom: 0.5rem; font-size: 1rem; }
+  .rule-card p { color: var(--muted); font-size: 0.875rem; line-height: 1.65; }
+
+  .guide-cta { text-align: center; padding: 3rem 2rem; border-color: var(--border2); }
+  .guide-cta h2 { margin-bottom: 0.5rem; }
+  .guide-cta p { color: var(--muted); margin-bottom: 1.5rem; }
+</style>

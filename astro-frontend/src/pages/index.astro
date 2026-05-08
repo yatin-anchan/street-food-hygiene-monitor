@@ -1,87 +1,115 @@
 ---
 import MainLayout from "../layouts/MainLayout.astro";
-
 import Hero from "../components/Hero.astro";
 ---
-<MainLayout title="Anonymous Feedback Wall">
-	<Hero />
-	<section>
-		<div class="container">
-			<div class="section-heading">
-				<h2>
-					Why Use Silent.Drop?
-				</h2>
-				<p>
-					Built for speed, simplicity,
-					and anonymous communication.
-				</p>
-			</div>
-			<div class="features-grid">
-				<div class="card feature-card">
-					<h3>Anonymous Sharing</h3>
-					<p>
-						Submit honest feedback without
-						revealing your identity.
-					</p>
-				</div>
+<MainLayout title="Home">
+  <Hero />
 
-				<div class="card feature-card">
-					<h3>Edge Powered</h3>
-					<p>
-						Cloudflare Workers and KV provide
-						lightning-fast performance.
-					</p>
-				</div>
+  <section class="features-section">
+    <div class="container">
+      <div class="section-head">
+        <span class="badge badge-blue">
+          <span class="material-icons-round">auto_awesome</span>
+          Why Silent.Drop
+        </span>
+        <h2>Built for honest, fearless reporting</h2>
+        <p>Community-driven hygiene accountability — powered by modern edge infrastructure.</p>
+      </div>
 
-				<div class="card feature-card">
-					<h3>Modern Stack</h3>
-					<p>
-						Built using Astro, Supabase,
-						and Cloudflare infrastructure.
-					</p>
-				</div>
+      <div class="features-grid">
+        <div class="feature-card card">
+          <div class="feat-icon"><span class="material-icons-round">visibility_off</span></div>
+          <h3>Anonymous Sharing</h3>
+          <p>Submit reports without revealing your identity. No account. No tracking. Just truth.</p>
+        </div>
+        <div class="feature-card card">
+          <div class="feat-icon"><span class="material-icons-round">location_on</span></div>
+          <h3>Geo-Tagged Reports</h3>
+          <p>Every complaint is pinned on a map so authorities can act on precise locations fast.</p>
+        </div>
+        <div class="feature-card card">
+          <div class="feat-icon"><span class="material-icons-round">bolt</span></div>
+          <h3>Edge Powered</h3>
+          <p>Cloudflare Workers and KV caching deliver lightning-fast, globally distributed responses.</p>
+        </div>
+        <div class="feature-card card">
+          <div class="feat-icon"><span class="material-icons-round">photo_camera</span></div>
+          <h3>Photo Evidence</h3>
+          <p>Attach images to your complaint. Visual proof makes reports more credible and actionable.</p>
+        </div>
+        <div class="feature-card card">
+          <div class="feat-icon"><span class="material-icons-round">bar_chart</span></div>
+          <h3>Admin Analytics</h3>
+          <p>Powerful dashboard with charts, hotspot maps, status tracking, and severity analytics.</p>
+        </div>
+        <div class="feature-card card">
+          <div class="feat-icon"><span class="material-icons-round">database</span></div>
+          <h3>Modern Stack</h3>
+          <p>Built on Astro, Supabase, and Cloudflare — a full-stack edge architecture for 2026.</p>
+        </div>
+      </div>
+    </div>
+  </section>
 
-			</div>
-		</div>
-	</section>
+  <section class="cta-section">
+    <div class="container">
+      <div class="cta-card card">
+        <div class="cta-glow" aria-hidden="true"></div>
+        <h2>See something wrong? Report it now.</h2>
+        <p>It takes less than 2 minutes. Your identity stays private. Your community benefits.</p>
+        <div class="cta-btns">
+          <a href="/submit" class="primary-btn">
+            <span class="material-icons-round">report</span>
+            Submit a Report
+          </a>
+          <a href="/wall" class="secondary-btn">
+            <span class="material-icons-round">feed</span>
+            Browse Wall
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
 </MainLayout>
 
 <style>
-	.section-heading {
-		text-align: center;
-		margin-bottom: 4rem;
-	}
+  .section-head {
+    text-align: center; margin-bottom: 3.5rem;
+  }
+  .section-head h2 {
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    margin: 1rem 0 0.75rem;
+  }
+  .section-head p { color: var(--muted); max-width: 520px; margin: auto; }
 
-	.section-heading h2 {
-		font-size: 2.5rem;
-		margin-bottom: 1rem;
-	}
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.25rem;
+  }
+  .feature-card { transition: all 0.25s ease; }
+  .feature-card:hover { transform: translateY(-5px); border-color: var(--border2); box-shadow: var(--shadow); }
+  .feat-icon {
+    width: 48px; height: 48px; border-radius: var(--radius-sm);
+    background: var(--primary-glow); display: flex; align-items: center;
+    justify-content: center; margin-bottom: 1.25rem;
+  }
+  .feat-icon .material-icons-round { color: var(--primary); font-size: 1.5rem !important; }
+  .feature-card h3 { font-size: 1.05rem; margin-bottom: 0.5rem; }
+  .feature-card p { color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
 
-	.section-heading p {
-		color: var(--muted);
-	}
-
-	.features-grid {
-		display: grid;
-		grid-template-columns:
-    repeat(auto-fit, minmax(250px, 1fr));
-		gap: 1.5rem;
-	}
-
-	.feature-card {
-		transition: 0.2s ease;
-	}
-
-	.feature-card:hover {
-		transform: translateY(-5px);
-	}
-
-	.feature-card h3 {
-		margin-bottom: 1rem;
-	}
-
-	.feature-card p {
-		color: var(--muted);
-	}
-
+  .cta-section { padding-bottom: 6rem; }
+  .cta-card {
+    text-align: center; padding: 4rem 2rem; position: relative; overflow: hidden;
+    border-color: var(--border2);
+  }
+  .cta-glow {
+    position: absolute; top: -60%; left: 50%; transform: translateX(-50%);
+    width: 500px; height: 300px; border-radius: 50%;
+    background: var(--primary); opacity: 0.05; filter: blur(60px);
+    pointer-events: none;
+  }
+  .cta-card h2 { font-size: clamp(1.5rem, 3vw, 2.2rem); margin-bottom: 0.75rem; }
+  .cta-card p { color: var(--muted); max-width: 480px; margin: 0 auto 2rem; }
+  .cta-btns { display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; }
 </style>

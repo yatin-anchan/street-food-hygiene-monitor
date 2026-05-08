@@ -1,99 +1,126 @@
 ---
 import MainLayout from "../layouts/MainLayout.astro";
 ---
-
 <MainLayout title="Admin Login">
-    <section>
-        <div class="container">
-            <div class="login-card card">
-
-                <h1>Admin Login</h1>
-                <p class="subtitle">Authorized access only</p>
-
-                <form id="loginForm">
-
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input type="email" id="email" placeholder="admin@test.com" />
-                    </div>
-
-                    <div class="form-group">
-                        <label for="password">Password</label>
-                        <input type="password" id="password" placeholder="••••••••" />
-                    </div>
-
-                    <button type="submit" class="primary-btn" id="loginBtn">
-                        Login
-                    </button>
-
-                    <p id="statusMessage"></p>
-
-                </form>
-            </div>
+  <section class="login-section">
+    <div class="container login-wrap">
+      <div class="login-visual" aria-hidden="true">
+        <div class="login-orb"></div>
+        <span class="material-icons-round login-lock-icon">admin_panel_settings</span>
+      </div>
+      <div class="card login-card">
+        <div class="login-header">
+          <span class="material-icons-round login-icon">lock</span>
+          <h1>Admin Login</h1>
+          <p>Authorized access only</p>
         </div>
-    </section>
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="email"><span class="material-icons-round">email</span>Email</label>
+            <input type="email" id="email" placeholder="admin@example.com" autocomplete="username" />
+          </div>
+          <div class="form-group">
+            <label for="password"><span class="material-icons-round">lock</span>Password</label>
+            <div class="password-wrap">
+              <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+              <button type="button" id="togglePass" class="pass-toggle" aria-label="Toggle password visibility">
+                <span class="material-icons-round" id="passIcon">visibility</span>
+              </button>
+            </div>
+          </div>
+          <button type="submit" class="primary-btn login-btn" id="loginBtn">
+            <span class="material-icons-round">login</span>
+            Sign In
+          </button>
+          <p id="statusMessage" class="status-msg"></p>
+        </form>
+      </div>
+    </div>
+  </section>
 </MainLayout>
 
-<!-- ✅ No type="module" — Vite bundles this, bare imports resolve correctly -->
 <script>
-    import { supabase } from "../utils/supabase";
+  import { supabase } from "../utils/supabase";
 
-    const form = document.getElementById("loginForm") as HTMLFormElement;
-    const statusMessage = document.getElementById("statusMessage")!;
-    const loginBtn = document.getElementById("loginBtn") as HTMLButtonElement;
+  const form = document.getElementById("loginForm") as HTMLFormElement;
+  const statusMessage = document.getElementById("statusMessage")!;
+  const loginBtn = document.getElementById("loginBtn") as HTMLButtonElement;
+  const togglePass = document.getElementById("togglePass")!;
+  const passInput = document.getElementById("password") as HTMLInputElement;
+  const passIcon = document.getElementById("passIcon")!;
 
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
+  togglePass.addEventListener('click', () => {
+    const isPass = passInput.type === 'password';
+    passInput.type = isPass ? 'text' : 'password';
+    passIcon.textContent = isPass ? 'visibility_off' : 'visibility';
+  });
 
-        const email = (document.getElementById("email") as HTMLInputElement).value;
-        const password = (document.getElementById("password") as HTMLInputElement).value;
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = (document.getElementById("email") as HTMLInputElement).value;
+    const password = passInput.value;
 
-        try {
-            loginBtn.disabled = true;
-            loginBtn.textContent = "Logging in...";
-
-            const { error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
-
-            if (error) throw error;
-
-            window.location.href = "/admin";
-
-        } catch (error: any) {
-            statusMessage.textContent = error.message;
-            statusMessage.className = "error";
-
-        } finally {
-            loginBtn.disabled = false;
-            loginBtn.textContent = "Login";
-        }
-    });
+    try {
+      loginBtn.disabled = true;
+      loginBtn.innerHTML = '<span class="material-icons-round">hourglass_empty</span>Signing in...';
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      window.location.href = "/admin";
+    } catch (error: any) {
+      statusMessage.textContent = error.message;
+      statusMessage.className = "status-msg error";
+    } finally {
+      loginBtn.disabled = false;
+      loginBtn.innerHTML = '<span class="material-icons-round">login</span>Sign In';
+    }
+  });
 </script>
 
 <style>
-    .login-card {
-        max-width: 500px;
-        margin: auto;
-        padding: 2rem;
-    }
+  .login-section { min-height: calc(100vh - 200px); display: flex; align-items: center; }
+  .login-wrap {
+    display: flex; align-items: center; justify-content: center;
+    gap: 4rem; padding: 2rem 0;
+  }
+  .login-visual {
+    display: flex; align-items: center; justify-content: center;
+    position: relative; flex: 1; min-height: 300px;
+  }
+  .login-orb {
+    width: 280px; height: 280px; border-radius: 50%;
+    background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+    position: absolute;
+  }
+  .login-lock-icon { font-size: 5rem !important; color: var(--primary); opacity: 0.5; position: relative; z-index: 1; }
+  .login-card { max-width: 440px; width: 100%; }
+  .login-header { text-align: center; margin-bottom: 2rem; }
+  .login-icon { font-size: 2.5rem !important; color: var(--primary); display: block; margin: 0 auto 0.75rem; }
+  .login-header h1 { font-size: 1.8rem; margin-bottom: 0.25rem; }
+  .login-header p { color: var(--muted); }
 
-    .login-card h1 {
-        margin-bottom: 1rem;
-    }
+  .form-group { margin-bottom: 1.25rem; }
+  .form-group label { display: flex; align-items: center; gap: 0.4rem; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; }
+  .form-group label .material-icons-round { font-size: 1rem !important; color: var(--primary); }
 
-    .subtitle {
-        margin-bottom: 2rem;
-        color: var(--muted);
-    }
+  .password-wrap { position: relative; }
+  .password-wrap input { padding-right: 3rem; }
+  .pass-toggle {
+    position: absolute; right: 0.875rem; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    display: flex; align-items: center; padding: 0;
+  }
+  .pass-toggle:hover { color: var(--text); }
 
-    .form-group {
-        margin-bottom: 1.5rem;
-    }
+  .login-btn { width: 100%; justify-content: center; padding: 0.9rem; font-size: 1rem; margin-top: 0.5rem; }
 
-    .error {
-        color: #ef4444;
-        margin-top: 1rem;
-    }
+  .status-msg { margin-top: 1rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.875rem; display: none; }
+  .status-msg.error { display: block; background: var(--high-bg); color: var(--high); border: 1px solid rgba(239,68,68,0.2); }
+  .status-msg.success { display: block; background: var(--low-bg); color: var(--low); }
+
+  @media (max-width: 768px) {
+    .login-wrap { flex-direction: column; gap: 2rem; }
+    .login-visual { min-height: 150px; }
+    .login-orb { width: 180px; height: 180px; }
+    .login-lock-icon { font-size: 3rem !important; }
+  }
 </style>

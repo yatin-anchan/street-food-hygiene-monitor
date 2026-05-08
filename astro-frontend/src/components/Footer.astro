@@ -1,20 +1,79 @@
 ---
-
 ---
 <footer class="footer">
-    <div class="container">
-        <p>
-            © 2026 Silent.Drop - Anonymous Feedback Wall
-        </p>
+    <div class="container footer-inner">
+        <div class="footer-brand">
+      <span class="footer-logo">
+        <span class="logo-dot"></span>
+        Silent<span class="logo-accent">.</span>Drop
+      </span>
+            <p>Anonymous feedback, secured at the edge.</p>
+        </div>
+
+        <div class="footer-links">
+            <div class="footer-col">
+                <p class="col-label">Platform</p>
+                <a href="/submit"><span class="material-icons-round">add_circle_outline</span>Submit</a>
+                <a href="/wall"><span class="material-icons-round">feed</span>Public Wall</a>
+                <a href="/guidelines"><span class="material-icons-round">gavel</span>Guidelines</a>
+            </div>
+            <div class="footer-col">
+                <p class="col-label">Company</p>
+                <a href="/about"><span class="material-icons-round">info</span>About</a>
+                <a href="/admin"><span class="material-icons-round">admin_panel_settings</span>Admin</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-bottom container">
+        <p>© 2026 Silent.Drop · Anonymous Feedback Wall · All rights reserved.</p>
+        <div class="footer-badges">
+            <span class="badge badge-blue"><span class="material-icons-round">bolt</span>Edge Powered</span>
+            <span class="badge badge-blue"><span class="material-icons-round">lock</span>Anonymous</span>
+        </div>
     </div>
 </footer>
 
 <style>
     .footer {
-        padding: 2rem 0;
         border-top: 1px solid var(--border);
-        margin-top: 5rem;
-        text-align: center;
-        color: var(--muted);
+        padding: 4rem 0 2rem;
+        margin-top: 4rem;
+        background: var(--bg2);
+    }
+    .footer-inner {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 3rem; margin-bottom: 3rem;
+    }
+    .footer-brand p { color: var(--muted); font-size: 0.9rem; margin-top: 0.5rem; }
+    .footer-logo {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 1.3rem; font-weight: 800;
+        display: flex; align-items: center; gap: 0.5rem; letter-spacing: -0.03em;
+    }
+    .logo-dot { width:7px;height:7px;border-radius:50%;background:var(--primary); }
+    .logo-accent { color:var(--primary); }
+
+    .footer-links { display: flex; gap: 3rem; }
+    .footer-col { display: flex; flex-direction: column; gap: 0.75rem; }
+    .col-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.25rem; }
+    .footer-col a { display:flex;align-items:center;gap:0.4rem;color:var(--text2);font-size:0.9rem;transition:color 0.2s; }
+    .footer-col a:hover { color: var(--primary); }
+    .footer-col .material-icons-round { font-size:0.95rem !important; }
+
+    .footer-bottom {
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 1rem;
+        padding-top: 1.5rem; border-top: 1px solid var(--border);
+        color: var(--muted); font-size: 0.85rem;
+    }
+    .footer-badges { display:flex;gap:0.5rem; }
+    .badge { font-size:0.75rem;padding:0.25rem 0.7rem; }
+    .badge .material-icons-round { font-size:0.85rem !important; }
+
+    @media (max-width: 640px) {
+        .footer-inner { grid-template-columns:1fr; gap:2rem; }
+        .footer-links { flex-wrap: wrap; gap: 2rem; }
     }
 </style>

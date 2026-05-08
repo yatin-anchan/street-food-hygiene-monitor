@@ -1,28 +1,20 @@
 ---
 import "../styles/global.css";
-
 import Navbar from "../components/Navbar.astro";
 import Footer from "../components/Footer.astro";
 
 const { title } = Astro.props;
 ---
-
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta
-            name="viewport"
-            content="width=device-width"
-    />
-    <title>{title}</title>
-    <link
-            rel="stylesheet"
-            href="https://unpkg.com/leaflet/dist/leaflet.css"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title} — Silent.Drop</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" is:inline></script>
 </head>
 <body>
 <Navbar />
@@ -30,5 +22,55 @@ const { title } = Astro.props;
     <slot />
 </main>
 <Footer />
+
+<!-- Lightbox -->
+<div class="lightbox-overlay" id="lightbox">
+    <button class="lightbox-close" id="lightboxClose" aria-label="Close">
+        <span class="material-icons-round">close</span>
+    </button>
+    <img src="" alt="Expanded image" id="lightboxImg" />
+    <p class="lightbox-hint">Click image to zoom · Press Esc to close</p>
+</div>
+
+<script is:inline>
+    // ── Theme persistence ──
+    (function() {
+        const saved = localStorage.getItem('sdTheme') || 'dark';
+        document.documentElement.setAttribute('data-theme', saved);
+    })();
+
+    // ── Lightbox ──
+    document.addEventListener('DOMContentLoaded', () => {
+        const lb = document.getElementById('lightbox');
+        const lbImg = document.getElementById('lightboxImg');
+        const lbClose = document.getElementById('lightboxClose');
+
+        function openLightbox(src, alt) {
+            lbImg.src = src; lbImg.alt = alt || '';
+            lbImg.classList.remove('zoomed');
+            lb.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            lb.classList.remove('active');
+            document.body.style.overflow = '';
+            setTimeout(() => { lbImg.src = ''; }, 300);
+        }
+
+        // Attach to all .img-fixed and .img-thumb
+        document.querySelectorAll('.img-fixed, .img-thumb, [data-lightbox]').forEach(img => {
+            img.addEventListener('click', () => openLightbox(img.src || img.dataset.src, img.alt));
+        });
+
+        lbClose.addEventListener('click', closeLightbox);
+        lb.addEventListener('click', (e) => { if (e.target === lb) closeLightbox(); });
+        lbImg.addEventListener('click', (e) => {
+            e.stopPropagation();
+            lbImg.classList.toggle('zoomed');
+        });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
+    });
+</script>
 </body>
 </html>

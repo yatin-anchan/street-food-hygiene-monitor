@@ -1,54 +1,169 @@
 ---
-
+const links = [
+    { href: '/', label: 'Home', icon: 'home' },
+    { href: '/submit', label: 'Submit', icon: 'add_circle_outline' },
+    { href: '/wall', label: 'Wall', icon: 'feed' },
+    { href: '/about', label: 'About', icon: 'info' },
+    { href: '/guidelines', label: 'Guidelines', icon: 'gavel' },
+];
 ---
-<nav class="navbar">
-    <div class="container nav-content">
+
+<nav class="navbar" id="navbar">
+    <div class="container nav-inner">
         <a href="/" class="logo">
-            Silent.Drop
+            <span class="logo-dot"></span>
+            Silent<span class="logo-accent">.</span>Drop
         </a>
-        <div class="nav-links">
-            <a href="/">Home</a>
-            <a href="/submit">Submit</a>
-            <a href="/wall">Wall</a>
-            <a href="/about">About</a>
+
+        <div class="nav-links" id="navLinks">
+            {links.map(l => (
+                    <a href={l.href} class="nav-link">
+                        <span class="material-icons-round nav-icon">{l.icon}</span>
+                        {l.label}
+                    </a>
+            ))}
         </div>
+
+        <div class="nav-actions">
+            <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+                <span class="material-icons-round" id="themeIcon">light_mode</span>
+            </button>
+            <button class="hamburger" id="hamburger" aria-label="Menu">
+                <span class="material-icons-round">menu</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Mobile menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        {links.map(l => (
+                <a href={l.href} class="mobile-link">
+                    <span class="material-icons-round">{l.icon}</span>
+                    {l.label}
+                </a>
+        ))}
     </div>
 </nav>
 
+<script is:inline>
+    // Theme toggle
+    const toggle = document.getElementById('themeToggle');
+    const icon = document.getElementById('themeIcon');
+
+    function applyTheme(t) {
+        document.documentElement.setAttribute('data-theme', t);
+        localStorage.setItem('sdTheme', t);
+        icon.textContent = t === 'dark' ? 'light_mode' : 'dark_mode';
+    }
+
+    // Init icon from saved
+    const saved = localStorage.getItem('sdTheme') || 'dark';
+    icon.textContent = saved === 'dark' ? 'light_mode' : 'dark_mode';
+
+    toggle.addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme');
+        applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
+
+    // Scroll effect
+    const navbar = document.getElementById('navbar');
+    window.addEventListener('scroll', () => {
+        navbar.classList.toggle('scrolled', window.scrollY > 20);
+    });
+
+    // Hamburger
+    const ham = document.getElementById('hamburger');
+    const mob = document.getElementById('mobileMenu');
+    ham.addEventListener('click', () => {
+        mob.classList.toggle('open');
+        ham.querySelector('.material-icons-round').textContent =
+            mob.classList.contains('open') ? 'close' : 'menu';
+    });
+
+    // Active link
+    document.querySelectorAll('.nav-link, .mobile-link').forEach(link => {
+        if (link.getAttribute('href') === window.location.pathname) {
+            link.classList.add('active');
+        }
+    });
+</script>
+
 <style>
     .navbar {
-        padding: 1.2rem 0;
+        position: sticky; top: 0; z-index: 100;
+        background: var(--nav-bg);
         border-bottom: 1px solid var(--border);
-        background: rgba(15, 23, 42, 0.9);
-        position: sticky;
-        top: 0;
-        backdrop-filter: blur(10px);
-        z-index: 100;
+        backdrop-filter: blur(16px);
+        transition: all 0.3s ease;
     }
-
-    .nav-content {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+    .navbar.scrolled {
+        box-shadow: 0 4px 24px rgba(0,0,0,0.15);
     }
-
+    .nav-inner {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 1rem 0;
+    }
     .logo {
-        font-size: 1.3rem;
-        font-weight: bold;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 1.4rem; font-weight: 800;
+        display: flex; align-items: center; gap: 0.5rem;
+        letter-spacing: -0.03em;
     }
+    .logo-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--primary);
+        box-shadow: 0 0 12px var(--primary);
+    }
+    .logo-accent { color: var(--primary); }
 
     .nav-links {
-        display: flex;
-        gap: 1.5rem;
+        display: flex; align-items: center; gap: 0.25rem;
+    }
+    .nav-link {
+        display: flex; align-items: center; gap: 0.35rem;
+        padding: 0.5rem 0.9rem; border-radius: var(--radius-sm);
+        font-size: 0.9rem; font-weight: 500; color: var(--muted);
+        transition: all 0.2s;
+    }
+    .nav-link:hover, .nav-link.active {
+        color: var(--text); background: var(--glass2);
+    }
+    .nav-link.active { color: var(--primary); }
+    .nav-icon { font-size: 1rem !important; }
+
+    .nav-actions { display: flex; align-items: center; gap: 0.5rem; }
+
+    .theme-toggle {
+        width: 40px; height: 40px; border-radius: 50%;
+        background: var(--glass2); border: 1px solid var(--border2);
+        display: flex; align-items: center; justify-content: center;
+        color: var(--text); cursor: pointer; transition: all 0.2s;
+    }
+    .theme-toggle:hover { background: var(--card2); border-color: var(--primary); }
+    .theme-toggle .material-icons-round { font-size: 1.1rem !important; }
+
+    .hamburger {
+        display: none; background: var(--glass2); border: 1px solid var(--border2);
+        color: var(--text); width: 40px; height: 40px; border-radius: var(--radius-sm);
+        align-items: center; justify-content: center;
     }
 
-    .nav-links a {
-        color: var(--muted);
-        transition: 0.2s ease;
+    .mobile-menu {
+        display: none; flex-direction: column;
+        border-top: 1px solid var(--border); padding: 0.75rem 0;
+        max-height: 0; overflow: hidden; transition: max-height 0.3s ease;
     }
-
-    .nav-links a:hover {
-        color: white;
+    .mobile-menu.open { display: flex; max-height: 400px; }
+    .mobile-link {
+        display: flex; align-items: center; gap: 0.75rem;
+        padding: 0.75rem 1.5rem; font-size: 0.95rem;
+        color: var(--text2); transition: all 0.2s;
     }
+    .mobile-link:hover, .mobile-link.active { color: var(--primary); background: var(--glass2); }
 
+    @media (max-width: 768px) {
+        .nav-links { display: none; }
+        .hamburger { display: flex; }
+        .mobile-menu { display: flex; }
+    }
 </style>

@@ -1,3 +1,47 @@
 ---
-
+import MainLayout from "../layouts/MainLayout.astro";
 ---
+<MainLayout title="Page Not Found">
+  <section class="notfound-section">
+    <div class="container notfound-wrap">
+      <div class="notfound-visual" aria-hidden="true">
+        <div class="nf-orb"></div>
+        <span class="nf-number">404</span>
+      </div>
+      <h1>Page Not Found</h1>
+      <p>The page you're looking for has vanished into the void — like an anonymous complaint, untraceable.</p>
+      <div class="nf-actions">
+        <a href="/" class="primary-btn">
+          <span class="material-icons-round">home</span>
+          Go Home
+        </a>
+        <a href="/wall" class="secondary-btn">
+          <span class="material-icons-round">feed</span>
+          View Wall
+        </a>
+      </div>
+    </div>
+  </section>
+</MainLayout>
+
+<style>
+  .notfound-section { min-height: calc(100vh - 200px); display: flex; align-items: center; }
+  .notfound-wrap { text-align: center; max-width: 580px; margin: auto; padding: 3rem 0; }
+  .notfound-visual { position: relative; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 2rem; }
+  .nf-orb {
+    width: 220px; height: 220px; border-radius: 50%;
+    background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+    position: absolute;
+  }
+  .nf-number {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 7rem; font-weight: 800; letter-spacing: -0.05em;
+    background: linear-gradient(135deg, var(--primary), #a78bfa);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; position: relative; z-index: 1;
+    opacity: 0.7;
+  }
+  .notfound-wrap h1 { font-size: 2rem; margin-bottom: 1rem; }
+  .notfound-wrap p { color: var(--muted); line-height: 1.7; margin-bottom: 2.5rem; max-width: 440px; margin-left: auto; margin-right: auto; }
+  .nf-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+</style>

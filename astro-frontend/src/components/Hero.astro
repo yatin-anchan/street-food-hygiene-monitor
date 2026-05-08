@@ -1,89 +1,128 @@
 ---
-
 ---
 <section class="hero">
-    <div class="container hero-content">
-        <div class="hero-text">
-            <p class="badge">
-                Anonymous • Secure • Fast
-            </p>
-            <h1>
-                Share Honest Feedback
-                Without Fear.
-            </h1>
-            <p class="description">
-                Slient.Drop - A modern anonymous feedback platform
-                built with Astro, Cloudflare Workers,
-                KV caching, and Supabase.
-            </p>
-            <div class="hero-buttons">
-                <a href="/submit" class="primary-btn">
-                    Submit Feedback
-                </a>
-                <a href="/wall" class="secondary-btn">
-                    View Public Wall
-                </a>
+    <div class="container hero-inner">
+        <div class="hero-eyebrow">
+      <span class="badge badge-blue">
+        <span class="material-icons-round">lock</span>
+        Anonymous · Secure · Geo-tagged
+      </span>
+        </div>
+
+        <h1 class="hero-title">
+            Report Street Food Issues.<br/>
+            <span class="gradient-text">Safely. Anonymously.</span>
+        </h1>
+
+        <p class="hero-desc">
+            Silent.Drop is a community-powered hygiene reporting platform. Pin a location,
+            describe the issue, and help your neighborhood stay safe — all without revealing your identity.
+        </p>
+
+        <div class="hero-cta">
+            <a href="/submit" class="primary-btn">
+                <span class="material-icons-round">report</span>
+                Report an Issue
+            </a>
+            <a href="/wall" class="secondary-btn">
+                <span class="material-icons-round">feed</span>
+                View Public Wall
+            </a>
+        </div>
+
+        <div class="hero-stats">
+            <div class="stat">
+                <span class="material-icons-round stat-icon">location_on</span>
+                <div>
+                    <strong>Geo-tagged</strong>
+                    <p>Every complaint is pinned to a precise map location</p>
+                </div>
+            </div>
+            <div class="stat">
+                <span class="material-icons-round stat-icon">visibility_off</span>
+                <div>
+                    <strong>Zero identity</strong>
+                    <p>No login required. No tracking. Ever.</p>
+                </div>
+            </div>
+            <div class="stat">
+                <span class="material-icons-round stat-icon">bolt</span>
+                <div>
+                    <strong>Edge-powered</strong>
+                    <p>Cloudflare Workers + KV at global edge</p>
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- Glow orbs -->
+    <div class="orb orb1" aria-hidden="true"></div>
+    <div class="orb orb2" aria-hidden="true"></div>
 </section>
 
 <style>
-
     .hero {
-        padding: 7rem 0;
+        position: relative; padding: 8rem 0 6rem; overflow: hidden;
+    }
+    .hero-inner { position: relative; z-index: 1; text-align: center; }
+
+    .hero-eyebrow { margin-bottom: 1.75rem; }
+
+    .hero-title {
+        font-size: clamp(2.8rem, 6vw, 5rem);
+        font-weight: 800; margin-bottom: 1.5rem;
+        letter-spacing: -0.03em;
+    }
+    .gradient-text {
+        background: linear-gradient(135deg, var(--primary) 0%, #a78bfa 100%);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
 
-    .hero-content {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
+    .hero-desc {
+        color: var(--text2); font-size: 1.15rem;
+        max-width: 620px; margin: 0 auto 2.5rem; line-height: 1.7;
     }
 
-    .hero-text {
-        max-width: 800px;
+    .hero-cta {
+        display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+        margin-bottom: 4rem;
     }
 
-    .badge {
-        display: inline-block;
-        background: rgba(59, 130, 246, 0.15);
-        color: #93c5fd;
-        padding: 0.5rem 1rem;
-        border-radius: 999px;
-        margin-bottom: 1.5rem;
-        font-size: 0.9rem;
+    .hero-stats {
+        display: flex; gap: 2rem; justify-content: center;
+        flex-wrap: wrap; text-align: left;
+    }
+    .stat {
+        display: flex; align-items: flex-start; gap: 0.75rem;
+        background: var(--glass2); border: 1px solid var(--border2);
+        border-radius: var(--radius); padding: 1rem 1.25rem;
+        backdrop-filter: blur(8px); max-width: 220px;
+        transition: all 0.2s;
+    }
+    .stat:hover { border-color: var(--primary); transform: translateY(-2px); }
+    .stat-icon { color: var(--primary); font-size: 1.4rem !important; margin-top: 2px; }
+    .stat strong { display: block; font-size: 0.9rem; margin-bottom: 0.2rem; }
+    .stat p { color: var(--muted); font-size: 0.8rem; line-height: 1.4; margin: 0; }
+
+    .orb {
+        position: absolute; border-radius: 50%; pointer-events: none;
+        filter: blur(80px); opacity: 0.35;
+    }
+    .orb1 {
+        width: 500px; height: 500px;
+        background: var(--primary); top: -150px; left: -150px;
+        opacity: 0.06;
+    }
+    .orb2 {
+        width: 400px; height: 400px;
+        background: #a78bfa; bottom: -100px; right: -100px;
+        opacity: 0.05;
     }
 
-    .hero h1 {
-        font-size: clamp(3rem, 7vw, 5rem);
-        margin-bottom: 1.5rem;
-        line-height: 1.05;
-    }
-
-    .description {
-        color: var(--muted);
-        font-size: 1.2rem;
-        max-width: 700px;
-        margin: auto;
-        margin-bottom: 2rem;
-    }
-
-    .hero-buttons {
-        display: flex;
-        gap: 1rem;
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-
-    .secondary-btn {
-        border: 1px solid var(--border);
-        padding: 1rem 1.5rem;
-        border-radius: 12px;
-        transition: 0.2s ease;
-    }
-
-    .secondary-btn:hover {
-        background: var(--card);
+    @media (max-width: 640px) {
+        .hero { padding: 5rem 0 4rem; }
+        .hero-stats { gap: 1rem; }
+        .stat { max-width: 100%; width: 100%; }
     }
 </style>
