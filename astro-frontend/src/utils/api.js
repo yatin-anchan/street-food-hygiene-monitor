@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    "http://localhost:8787";
+    "https://worker-api.yatin-a-anchan.workers.dev";
 
 export async function submitFeedback(data) {
     const response = await fetch(

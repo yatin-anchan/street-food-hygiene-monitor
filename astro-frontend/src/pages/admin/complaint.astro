@@ -26,7 +26,7 @@ import MainLayout from "../../layouts/MainLayout.astro";
         }
 
         try {
-            const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8787";
+            const apiUrl = import.meta.env.VITE_API_URL ?? "https://worker-api.yatin-a-anchan.workers.dev";
             const response = await fetch(`${apiUrl}/api/messages`);
 
             if (!response.ok) throw new Error(`Server error: ${response.status}`);
