@@ -49,20 +49,16 @@ The system is designed with a **serverless-first architecture** using Cloudflare
 
 ```mermaid
 flowchart TD
-
-A[User (Astro Frontend)] --> B[Cloudflare Worker API]
-
-B --> C[Supabase Database]
-B --> D[Supabase Storage Bucket]
-
-B --> E[Cloudflare KV Cache]
-
-E --> B
-C --> B
-
-B --> A
+    A[User - Astro Frontend] --> B[Cloudflare Worker API]
+    B --> C[Supabase Database]
+    B --> D[Supabase Storage Bucket]
+    B --> E[Cloudflare KV Cache]
+    E --> B
+    C --> B
+    B --> A
 ```
 
+---
 ### 🔁 Data Flow Explanation
 
 1. User submits complaint via Astro frontend
