@@ -1,0 +1,436 @@
+---
+import MainLayout
+    from "../layouts/MainLayout.astro";
+---
+
+<MainLayout title="Complaint Wall">
+
+    <section>
+
+        <div class="container">
+
+            <div class="wall-header">
+
+                <h1>
+                    Public Complaint Wall
+                </h1>
+
+                <p>
+                    Community reported street food
+                    hygiene complaints.
+                </p>
+
+            </div>
+
+            <div
+                    id="complaintsContainer"
+                    class="complaints-grid"
+            >
+
+                <p class="loading">
+                    Loading complaints...
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+</MainLayout>
+
+<script>
+
+    async function loadComplaints() {
+
+        const container =
+            document.getElementById(
+                "complaintsContainer"
+            );
+
+        try {
+
+            const response =
+                await fetch(
+                    "http://localhost:8787/api/messages"
+                );
+
+            const complaints =
+                await response.json();
+
+            if (!complaints.length) {
+
+                container.innerHTML = `
+
+          <div class="empty-state">
+
+            <h2>
+              No complaints yet
+            </h2>
+
+            <p>
+              Community reports
+              will appear here.
+            </p>
+
+          </div>
+        `;
+
+                return;
+            }
+
+            container.innerHTML =
+                complaints.map(
+
+                    (complaint) => `
+
+            <div class="complaint-card">
+
+              <img
+                src="${
+                        complaint.image_url ||
+                        'https://placehold.co/600x400'
+                    }"
+                class="complaint-image"
+              />
+
+              <div class="card-content">
+
+                <div class="top-row">
+
+                  <h2>
+                    ${
+                        complaint.vendor_name ||
+                        "Unknown Vendor"
+                    }
+                  </h2>
+
+                  <span
+                    class="severity
+                    ${complaint.severity}"
+                  >
+                    ${complaint.severity}
+                  </span>
+
+                </div>
+
+                <p class="vendor-type">
+
+                  ${complaint.vendor_type}
+
+                </p>
+
+                <div class="issues">
+
+                  ${
+
+                        complaint.issue_types
+
+                            ?.map(
+
+                                issue => `
+
+                        <span
+                          class="issue-tag"
+                        >
+                          ${issue}
+                        </span>
+                      `
+                            )
+
+                            .join("")
+
+                    }
+
+                </div>
+
+                <span
+                  class="status-badge"
+                >
+                  ${complaint.status}
+                </span>
+
+                <button
+                  class="expand-btn"
+                  onclick="toggleDetails(${complaint.id})"
+                >
+                  View Details
+                </button>
+
+                <div
+                  class="details"
+                  id="details-${complaint.id}"
+                >
+
+                  <p class="description">
+
+                    ${complaint.description}
+
+                  </p>
+
+                  <div class="map-wrapper">
+
+                    <iframe
+
+                      width="100%"
+
+                      height="250"
+
+                      frameborder="0"
+
+                      scrolling="no"
+
+                      src="https://www.openstreetmap.org/export/embed.html?bbox=${
+                        complaint.longitude - 0.01
+                    }%2C${
+                        complaint.latitude - 0.01
+                    }%2C${
+                        complaint.longitude + 0.01
+                    }%2C${
+                        complaint.latitude + 0.01
+                    }&layer=mapnik&marker=${
+                        complaint.latitude
+                    }%2C${
+                        complaint.longitude
+                    }"
+
+                    ></iframe>
+
+                  </div>
+
+                  <p class="timestamp">
+
+                    Reported:
+                    ${new Date(
+                        complaint.created_at
+                    ).toLocaleString()}
+
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+          `
+                ).join("");
+
+        } catch {
+
+            container.innerHTML = `
+
+        <p class="error">
+          Failed to load complaints.
+        </p>
+      `;
+        }
+    }
+
+    function toggleDetails(id) {
+
+        const details =
+            document.getElementById(
+                `details-${id}`
+            );
+
+        details.classList.toggle(
+            "show-details"
+        );
+    }
+
+    loadComplaints();
+
+</script>
+
+<style>
+
+    .wall-header {
+
+        margin-bottom: 3rem;
+
+        text-align: center;
+    }
+
+    .wall-header h1 {
+
+        font-size: 3rem;
+
+        margin-bottom: 1rem;
+    }
+
+    .wall-header p {
+
+        color: var(--muted);
+    }
+
+    .complaints-grid {
+
+        display: grid;
+
+        gap: 2rem;
+    }
+
+    .complaint-card {
+
+        background: var(--card);
+
+        border: 1px solid var(--border);
+
+        border-radius: 20px;
+
+        overflow: hidden;
+
+        transition: 0.3s;
+    }
+
+    .complaint-card:hover {
+
+        transform: translateY(-5px);
+    }
+
+    .complaint-image {
+
+        width: 100%;
+
+        height: 300px;
+
+        object-fit: cover;
+    }
+
+    .card-content {
+
+        padding: 2rem;
+    }
+
+    .top-row {
+
+        display: flex;
+
+        justify-content: space-between;
+
+        align-items: center;
+
+        margin-bottom: 1rem;
+    }
+
+    .vendor-type {
+
+        color: var(--muted);
+
+        margin-bottom: 1rem;
+    }
+
+    .issues {
+
+        display: flex;
+
+        flex-wrap: wrap;
+
+        gap: 0.5rem;
+
+        margin-bottom: 1rem;
+    }
+
+    .issue-tag {
+
+        background: rgba(255,255,255,0.08);
+
+        padding: 0.4rem 0.8rem;
+
+        border-radius: 999px;
+
+        font-size: 0.85rem;
+    }
+
+    .severity {
+
+        padding: 0.4rem 1rem;
+
+        border-radius: 999px;
+
+        font-size: 0.85rem;
+
+        font-weight: bold;
+    }
+
+    .Low {
+        background: #15803d;
+    }
+
+    .Medium {
+        background: #ca8a04;
+    }
+
+    .High {
+        background: #dc2626;
+    }
+
+    .Critical {
+        background: #7f1d1d;
+    }
+
+    .status-badge {
+
+        display: inline-block;
+
+        margin-bottom: 1rem;
+
+        background: #2563eb;
+
+        padding: 0.4rem 1rem;
+
+        border-radius: 999px;
+
+        font-size: 0.85rem;
+    }
+
+    .expand-btn {
+
+        width: 100%;
+    }
+
+    .details {
+
+        display: none;
+
+        margin-top: 2rem;
+    }
+
+    .show-details {
+
+        display: block;
+    }
+
+    .description {
+
+        margin-bottom: 2rem;
+
+        line-height: 1.7;
+    }
+
+    .map-wrapper {
+
+        margin-bottom: 2rem;
+
+        border-radius: 16px;
+
+        overflow: hidden;
+    }
+
+    .timestamp {
+
+        color: var(--muted);
+
+        font-size: 0.9rem;
+    }
+
+    .loading,
+    .error,
+    .empty-state {
+
+        text-align: center;
+
+        padding: 4rem 0;
+    }
+
+</style>

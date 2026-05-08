@@ -1,0 +1,12 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "worker-api",
+	"main": "src/index.js",
+	"compatibility_date": "2026-05-08",
+	"kv_namespaces": [
+		{
+			"binding": "FEEDBACK_KV",
+			"id": "ae4ab8735c25445ca6c1e2232f753c84"
+		}
+	]
+}

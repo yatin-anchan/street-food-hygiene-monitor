@@ -1,0 +1,184 @@
+---
+import MainLayout from "../../layouts/MainLayout.astro";
+---
+
+<MainLayout title="Complaint Details">
+    <section>
+        <div class="container">
+            <div id="complaintContainer" class="details-card card">
+                <p>Loading complaint...</p>
+            </div>
+        </div>
+    </section>
+</MainLayout>
+
+<script>
+    async function loadComplaint() {
+        const container = document.getElementById("complaintContainer")!;
+
+        // Read ?id=1 from the URL — no server needed
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get("id");
+
+        if (!id) {
+            container.innerHTML = `<h2 style="padding:2rem">No complaint ID provided.</h2>`;
+            return;
+        }
+
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8787";
+            const response = await fetch(`${apiUrl}/api/messages`);
+
+            if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
+            const complaints = await response.json();
+            const complaint = complaints.find((c: any) => c.id == id);
+
+            if (!complaint) {
+                container.innerHTML = `<h2 style="padding:2rem">Complaint not found.</h2>`;
+                return;
+            }
+
+            const mapHtml =
+                complaint.latitude && complaint.longitude
+                    ? `<div class="map-wrapper">
+               <iframe
+                 width="100%"
+                 height="400"
+                 frameborder="0"
+                 scrolling="no"
+                 src="https://www.openstreetmap.org/export/embed.html?bbox=${complaint.longitude - 0.01}%2C${complaint.latitude - 0.01}%2C${complaint.longitude + 0.01}%2C${complaint.latitude + 0.01}&layer=mapnik&marker=${complaint.latitude}%2C${complaint.longitude}"
+               ></iframe>
+             </div>`
+                    : `<p class="no-location">No location data available.</p>`;
+
+            container.innerHTML = `
+        <img
+          src="${complaint.image_url || "https://placehold.co/1200x700"}"
+          class="detail-image"
+          alt="Complaint evidence"
+        />
+        <div class="detail-content">
+          <div class="title-row">
+            <h1>${complaint.vendor_name}</h1>
+            <span class="severity ${complaint.severity}">${complaint.severity}</span>
+          </div>
+          <p class="vendor-type">${complaint.vendor_type}</p>
+          <div class="issues">
+            ${(complaint.issue_types ?? [])
+                .map((issue: string) => `<span class="issue-tag">${issue}</span>`)
+                .join("")}
+          </div>
+          <div class="info-grid">
+            <div class="info-box">
+              <h3>Status</h3>
+              <p>${complaint.status}</p>
+            </div>
+            <div class="info-box">
+              <h3>Reported On</h3>
+              <p>${new Date(complaint.created_at).toLocaleString()}</p>
+            </div>
+          </div>
+          <div class="description-box">
+            <h2>Full Description</h2>
+            <p>${complaint.description}</p>
+          </div>
+          ${mapHtml}
+          <a href="/admin" class="back-link">← Back to Dashboard</a>
+        </div>
+      `;
+
+        } catch (err) {
+            console.error(err);
+            container.innerHTML = `
+        <div style="padding:2rem;color:red">
+          Failed to load complaint. Is the worker running?
+        </div>`;
+        }
+    }
+
+    loadComplaint();
+</script>
+
+<style>
+    .details-card { overflow: hidden; }
+
+    .detail-image {
+        width: 100%;
+        height: 450px;
+        object-fit: cover;
+        display: block;
+    }
+
+    .detail-content { padding: 2rem; }
+
+    .title-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .vendor-type {
+        color: var(--muted);
+        margin-bottom: 2rem;
+    }
+
+    .issues {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.7rem;
+        margin-bottom: 2rem;
+    }
+
+    .issue-tag {
+        background: rgba(255, 255, 255, 0.08);
+        padding: 0.5rem 1rem;
+        border-radius: 999px;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .info-box {
+        background: rgba(255, 255, 255, 0.04);
+        padding: 1.5rem;
+        border-radius: 16px;
+    }
+
+    .description-box { margin-bottom: 2rem; }
+    .description-box p { line-height: 1.8; }
+
+    .map-wrapper {
+        border-radius: 20px;
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+
+    .no-location {
+        color: var(--muted);
+        margin-bottom: 2rem;
+    }
+
+    .back-link {
+        display: inline-block;
+        margin-top: 1rem;
+        color: var(--text);
+        text-decoration: underline;
+    }
+
+    .severity {
+        padding: 0.4rem 1rem;
+        border-radius: 999px;
+        color: white;
+    }
+
+    .Low { background: #15803d; }
+    .Medium { background: #ca8a04; }
+    .High { background: #dc2626; }
+    .Critical { background: #7f1d1d; }
+</style>

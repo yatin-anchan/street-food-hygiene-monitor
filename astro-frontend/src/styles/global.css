@@ -1,0 +1,109 @@
+/* RESET */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ROOT VARIABLES */
+:root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --text: #f8fafc;
+    --muted: #94a3b8;
+    --primary: #3b82f6;
+    --border: #334155;
+    --max-width: 1200px;
+}
+
+/* BODY */
+body {
+    font-family:
+            Inter,
+            system-ui,
+            sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+}
+
+/* CONTAINER */
+
+.container {
+    width: 90%;
+    max-width: var(--max-width);
+    margin: auto;
+}
+
+/* LINKS */
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* BUTTONS */
+button {
+    border: none;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+/* INPUTS */
+input,
+textarea {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 1rem;
+}
+
+/* TEXTAREA */
+textarea {
+    resize: vertical;
+    min-height: 150px;
+}
+
+/* SECTION */
+section {
+    padding: 5rem 0;
+}
+
+/* HEADINGS */
+h1,
+h2,
+h3 {
+    line-height: 1.2;
+}
+
+/* CARD */
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1.5rem;
+}
+
+/* PRIMARY BUTTON */
+.primary-btn {
+    background: var(--primary);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.primary-btn:hover {
+    opacity: 0.9;
+}
+
+select {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+}

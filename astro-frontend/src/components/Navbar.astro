@@ -1,0 +1,54 @@
+---
+
+---
+<nav class="navbar">
+    <div class="container nav-content">
+        <a href="/" class="logo">
+            Silent.Drop
+        </a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/submit">Submit</a>
+            <a href="/wall">Wall</a>
+            <a href="/about">About</a>
+        </div>
+    </div>
+</nav>
+
+<style>
+    .navbar {
+        padding: 1.2rem 0;
+        border-bottom: 1px solid var(--border);
+        background: rgba(15, 23, 42, 0.9);
+        position: sticky;
+        top: 0;
+        backdrop-filter: blur(10px);
+        z-index: 100;
+    }
+
+    .nav-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .logo {
+        font-size: 1.3rem;
+        font-weight: bold;
+    }
+
+    .nav-links {
+        display: flex;
+        gap: 1.5rem;
+    }
+
+    .nav-links a {
+        color: var(--muted);
+        transition: 0.2s ease;
+    }
+
+    .nav-links a:hover {
+        color: white;
+    }
+
+</style>

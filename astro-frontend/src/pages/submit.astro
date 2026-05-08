@@ -1,0 +1,302 @@
+---
+import MainLayout from "../layouts/MainLayout.astro";
+---
+
+<MainLayout title="Report Hygiene Issue">
+
+    <section>
+        <div class="container">
+
+            <div class="submit-wrapper card">
+
+                <h1>
+                    Report Street Food Hygiene Issue
+                </h1>
+
+                <p class="subtitle">
+                    Help improve food safety in your area.
+                </p>
+
+                <form id="feedbackForm">
+
+                    <div class="form-group">
+                        <label for="vendorName">Vendor Name</label>
+                        <input
+                                type="text"
+                                id="vendorName"
+                                placeholder="Sharma Vada Pav"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="vendorType">Vendor Type</label>
+                        <select id="vendorType">
+                            <option>Street Cart</option>
+                            <option>Food Truck</option>
+                            <option>Tea Stall</option>
+                            <option>Juice Center</option>
+                            <option>Small Restaurant</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Hygiene Issues</label>
+                        <div class="checkbox-grid">
+                            <label>
+                                <input type="checkbox" value="Dirty utensils" />
+                                Dirty utensils
+                            </label>
+                            <label>
+                                <input type="checkbox" value="Spoiled food" />
+                                Spoiled food
+                            </label>
+                            <label>
+                                <input type="checkbox" value="Insects" />
+                                Insects
+                            </label>
+                            <label>
+                                <input type="checkbox" value="No gloves" />
+                                No gloves
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="severity">Severity</label>
+                        <select id="severity">
+                            <option>Low</option>
+                            <option>Medium</option>
+                            <option>High</option>
+                            <option>Critical</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="image">Upload Evidence Image</label>
+                        <input type="file" id="image" accept="image/*" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Detailed Description</label>
+                        <textarea
+                                id="description"
+                                placeholder="Describe hygiene issue..."
+                        ></textarea>
+                    </div>
+
+                    <button type="button" class="primary-btn" id="locationBtn">
+                        Use Current Location
+                    </button>
+
+                    <p id="locationText">No location selected</p>
+
+                    <button type="submit" class="primary-btn submit-btn" id="submitBtn">
+                        Submit Complaint
+                    </button>
+
+                    <p id="statusMessage"></p>
+
+                </form>
+
+            </div>
+
+        </div>
+    </section>
+
+</MainLayout>
+
+<script>
+    import { supabase } from "../utils/supabase";
+
+    const form = document.getElementById("feedbackForm") as HTMLFormElement;
+    const statusMessage = document.getElementById("statusMessage")!;
+    const submitBtn = document.getElementById("submitBtn") as HTMLButtonElement;
+    const imageInput = document.getElementById("image") as HTMLInputElement;
+    const locationBtn = document.getElementById("locationBtn") as HTMLButtonElement;
+    const locationText = document.getElementById("locationText")!;
+
+    let latitude: number | null = null;
+    let longitude: number | null = null;
+
+    // ======================
+    // LOCATION
+    // ======================
+
+    locationBtn.addEventListener("click", () => {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                latitude = position.coords.latitude;
+                longitude = position.coords.longitude;
+                locationText.textContent = `Location selected: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+            },
+            () => {
+                alert("Unable to access location");
+            }
+        );
+    });
+
+    // ======================
+    // IMAGE UPLOAD
+    // ======================
+
+    async function uploadImage(file: File): Promise<string | null> {
+        if (!file) return null;
+
+        const fileName = `${Date.now()}-${file.name}`;
+
+        const { error } = await supabase.storage
+            .from("complaint-images")
+            .upload(fileName, file);
+
+        if (error) {
+            throw new Error("Image upload failed");
+        }
+
+        const { data } = supabase.storage
+            .from("complaint-images")
+            .getPublicUrl(fileName);
+
+        return data.publicUrl;
+    }
+
+    // ======================
+    // FORM SUBMIT
+    // ======================
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const vendorName = (document.getElementById("vendorName") as HTMLInputElement).value;
+        const vendorType = (document.getElementById("vendorType") as HTMLSelectElement).value;
+        const severity = (document.getElementById("severity") as HTMLSelectElement).value;
+        const description = (document.getElementById("description") as HTMLTextAreaElement).value;
+
+        const checkedIssues = Array.from(
+            document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:checked')
+        ).map((checkbox) => checkbox.value);
+
+        const imageFile = imageInput.files?.[0];
+
+        // VALIDATION
+        if (description.trim().length < 10) {
+            statusMessage.textContent = "Description too short.";
+            statusMessage.className = "error";
+            return;
+        }
+
+        try {
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Submitting...";
+
+            let imageUrl: string | null = null;
+
+            if (imageFile) {
+                imageUrl = await uploadImage(imageFile);
+            }
+
+            // Use env variable for API URL — set VITE_API_URL in your .env file
+            const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8787";
+
+            const response = await fetch(`${apiUrl}/api/submit`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    vendor_name: vendorName,
+                    vendor_type: vendorType,
+                    issue_types: checkedIssues,
+                    severity,
+                    description,
+                    image_url: imageUrl,
+                    latitude,
+                    longitude,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+
+            statusMessage.textContent = "Complaint submitted successfully.";
+            statusMessage.className = "success";
+            form.reset();
+            latitude = null;
+            longitude = null;
+            locationText.textContent = "No location selected";
+
+        } catch (err) {
+            console.error(err);
+            statusMessage.textContent = "Submission failed. Please try again.";
+            statusMessage.className = "error";
+
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Submit Complaint";
+        }
+    });
+</script>
+
+<style>
+    .submit-wrapper {
+        max-width: 700px;
+        margin: auto;
+    }
+
+    .submit-wrapper h1 {
+        margin-bottom: 1rem;
+        font-size: 2.5rem;
+    }
+
+    .subtitle {
+        color: var(--muted);
+        margin-bottom: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+
+    input,
+    textarea,
+    select {
+        width: 100%;
+        padding: 1rem;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text);
+    }
+
+    textarea {
+        min-height: 150px;
+        resize: vertical;
+    }
+
+    .checkbox-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .submit-btn {
+        width: 100%;
+        margin-top: 1.5rem;
+    }
+
+    .success {
+        color: #22c55e;
+        margin-top: 1rem;
+    }
+
+    .error {
+        color: #ef4444;
+        margin-top: 1rem;
+    }
+</style>

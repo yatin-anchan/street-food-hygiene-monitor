@@ -1,0 +1,511 @@
+---
+import MainLayout from "../layouts/MainLayout.astro";
+---
+
+<MainLayout title="Admin Dashboard">
+    <section>
+        <div class="container">
+            <div class="dashboard-header">
+                <h1>Admin Dashboard</h1>
+                <p>Monitor and manage hygiene complaints.</p>
+                <button id="logoutBtn" class="primary-btn">Logout</button>
+            </div>
+
+            <!-- ANALYTICS -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h2 id="totalCount">0</h2>
+                    <p>Total Complaints</p>
+                </div>
+                <div class="stat-card">
+                    <h2 id="criticalCount">0</h2>
+                    <p>Critical Issues</p>
+                </div>
+                <div class="stat-card">
+                    <h2 id="resolvedCount">0</h2>
+                    <p>Resolved Cases</p>
+                </div>
+                <div class="stat-card">
+                    <h2 id="reviewCount">0</h2>
+                    <p>In Review</p>
+                </div>
+            </div>
+
+            <!-- CHART -->
+            <div class="chart-card card">
+                <h2>Complaint Severity Distribution</h2>
+                <canvas id="severityChart"></canvas>
+            </div>
+
+            <!-- FREQUENT OFFENDERS -->
+            <div class="offenders-section card">
+                <h2>Frequent Complaint Vendors</h2>
+                <div id="offendersList">Loading...</div>
+            </div>
+
+            <!-- MAP -->
+            <div class="map-card card">
+                <h2>Complaint Hotspot Map</h2>
+                <div id="adminMap"></div>
+            </div>
+
+            <!-- STATUS TABS -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="window.filterComplaints('All', event)">All</button>
+                <button class="tab-btn" onclick="window.filterComplaints('In Review', event)">In Review</button>
+                <button class="tab-btn" onclick="window.filterComplaints('Under Investigation', event)">Under Investigation</button>
+                <button class="tab-btn" onclick="window.filterComplaints('Action Taken', event)">Action Taken</button>
+                <button class="tab-btn" onclick="window.filterComplaints('Dismissed', event)">Dismissed</button>
+                <button class="tab-btn" onclick="window.filterComplaints('Resolved', event)">Resolved</button>
+            </div>
+
+            <!-- TABLE -->
+            <div class="table-wrapper card">
+                <h2>Complaint Management</h2>
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Vendor</th>
+                        <th>Severity</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="complaintsTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</MainLayout>
+
+<script>
+    import { supabase } from "../utils/supabase";
+    import Chart from "chart.js/auto";
+    import L from "leaflet";
+    import "leaflet/dist/leaflet.css";
+
+    let complaints: any[] = [];
+    let chartInstance: Chart | null = null;
+    let mapInstance: L.Map | null = null;
+    let currentFilter = "All";
+
+    // ======================
+    // LOGOUT
+    // ======================
+
+    document.getElementById("logoutBtn")!.addEventListener("click", async () => {
+        await supabase.auth.signOut();
+        window.location.href = "/login";
+    });
+
+
+    // ======================
+    // REALTIME SUBSCRIPTIONS
+    // ======================
+
+    supabase
+
+        .channel(
+            "complaints-realtime"
+        )
+
+        .on(
+
+            "postgres_changes",
+
+            {
+
+                event: "*",
+
+                schema: "public",
+
+                table: "complaints"
+            },
+
+            (payload) => {
+
+                console.log(
+                    "Realtime update:",
+                    payload
+                );
+
+                loadDashboard();
+            }
+        )
+
+        .subscribe();
+
+
+    // ======================
+    // LOAD DASHBOARD
+    // ======================
+
+    async function loadDashboard() {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                window.location.href = "/login";
+                return;
+            }
+
+            const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8787";
+            const response = await fetch(`${apiUrl}/api/messages`);
+            if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
+            complaints = await response.json();
+
+            renderStats();
+            renderTable();
+            renderChart();
+            renderOffenders();
+            renderMap();
+
+        } catch (err) {
+            console.error("Dashboard load failed:", err);
+            document.getElementById("complaintsTable")!.innerHTML =
+                `<tr><td colspan="5" style="color:red;padding:1rem">
+          Failed to load dashboard. Is the worker running on port 8787?
+        </td></tr>`;
+        }
+    }
+
+    // ======================
+    // STATS
+    // ======================
+
+    function renderStats() {
+        document.getElementById("totalCount")!.textContent = String(complaints.length);
+        document.getElementById("criticalCount")!.textContent =
+            String(complaints.filter((c) => c.severity === "Critical").length);
+        document.getElementById("resolvedCount")!.textContent =
+            String(complaints.filter((c) => c.status === "Resolved").length);
+        document.getElementById("reviewCount")!.textContent =
+            String(complaints.filter((c) => c.status === "In Review").length);
+    }
+
+    // ======================
+    // TABLE
+    // ======================
+
+    function renderTable() {
+        const table = document.getElementById("complaintsTable")!;
+        const statuses = [
+            "In Review",
+            "Under Investigation",
+            "Action Taken",
+            "Dismissed",
+            "Resolved",
+        ];
+
+        table.innerHTML = complaints
+            .filter(
+                (complaint) =>
+                    currentFilter === "All" || complaint.status === currentFilter
+            )
+            .map(
+                (complaint) => `
+        <tr>
+          <td>${complaint.vendor_name}</td>
+          <td>
+            <span class="severity ${complaint.severity}">
+              ${complaint.severity}
+            </span>
+          </td>
+          <td>
+            <select onchange="window.updateStatus(${complaint.id}, this.value)">
+              ${statuses
+                    .map(
+                        (status) => `
+                <option value="${status}" ${complaint.status === status ? "selected" : ""}>
+                  ${status}
+                </option>`
+                    )
+                    .join("")}
+            </select>
+          </td>
+          <td>${new Date(complaint.created_at).toLocaleDateString()}</td>
+          <td>
+            <a href="/admin/complaint?id=${complaint.id}">
+  <button>View</button>
+</a>
+          </td>
+        </tr>
+      `
+            )
+            .join("");
+    }
+
+    // ======================
+    // FILTER
+    // ======================
+
+    function filterComplaints(status: string, event: Event) {
+        currentFilter = status;
+        document.querySelectorAll(".tab-btn").forEach((btn) => {
+            btn.classList.remove("active");
+        });
+        (event.target as HTMLElement).classList.add("active");
+        renderTable();
+    }
+
+    // ======================
+    // CHART
+    // ======================
+
+    function renderChart() {
+        const ctx = document.getElementById("severityChart") as HTMLCanvasElement;
+
+        const severityCounts: Record<string, number> = {
+            Low: 0, Medium: 0, High: 0, Critical: 0,
+        };
+
+        complaints.forEach((complaint) => {
+            if (complaint.severity in severityCounts) {
+                severityCounts[complaint.severity]++;
+            }
+        });
+
+        if (chartInstance) chartInstance.destroy();
+
+        chartInstance = new Chart(ctx, {
+            type: "doughnut",
+            data: {
+                labels: Object.keys(severityCounts),
+                datasets: [
+                    {
+                        data: Object.values(severityCounts),
+                        backgroundColor: ["#15803d", "#ca8a04", "#dc2626", "#7f1d1d"],
+                    },
+                ],
+            },
+        });
+    }
+
+    // ======================
+    // MAP
+    // ======================
+
+    function renderMap() {
+        if (mapInstance) {
+            mapInstance.remove();
+            mapInstance = null;
+        }
+
+        mapInstance = L.map("adminMap").setView([20.5937, 78.9629], 5);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "&copy; OpenStreetMap",
+        }).addTo(mapInstance);
+
+        complaints.forEach((complaint) => {
+            if (!complaint.latitude || !complaint.longitude) return;
+
+            let color = "green";
+            if (complaint.severity === "Medium") color = "orange";
+            if (complaint.severity === "High") color = "red";
+            if (complaint.severity === "Critical") color = "darkred";
+
+            L.circleMarker([complaint.latitude, complaint.longitude], {
+                radius: 10,
+                color,
+                fillColor: color,
+                fillOpacity: 0.6,
+            })
+                .addTo(mapInstance!)
+                .bindPopup(`
+          <strong>${complaint.vendor_name}</strong><br/>
+          Severity: ${complaint.severity}<br/>
+          Status: ${complaint.status}<br/><br/>
+          ${complaint.description}
+        `);
+        });
+    }
+
+    // ======================
+    // FREQUENT OFFENDERS
+    // ======================
+
+    function renderOffenders() {
+        const offenders: Record<string, number> = {};
+
+        complaints.forEach((complaint) => {
+            const vendor = complaint.vendor_name;
+            offenders[vendor] = (offenders[vendor] || 0) + 1;
+        });
+
+        const sorted = Object.entries(offenders)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5);
+
+        document.getElementById("offendersList")!.innerHTML = sorted
+            .map(
+                ([name, count]) => `
+        <div class="offender-item">
+          <strong>${name}</strong>
+          <span>${count} complaints</span>
+        </div>
+      `
+            )
+            .join("");
+    }
+
+    // ======================
+    // STATUS UPDATE
+    // ======================
+
+    async function updateStatus(id: number, status: string) {
+        const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8787";
+        await fetch(`${apiUrl}/api/update-status`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, status }),
+        });
+        await loadDashboard();
+    }
+
+    // Expose to window for inline onclick handlers
+    (window as any).updateStatus = updateStatus;
+    (window as any).filterComplaints = filterComplaints;
+
+    loadDashboard();
+</script>
+
+<style>
+    .dashboard-header {
+        margin-bottom: 3rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .dashboard-header h1 {
+        font-size: 3rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .dashboard-header p {
+        flex: 1 1 100%;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+    }
+
+    .stat-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 2rem;
+        text-align: center;
+    }
+
+    .stat-card h2 {
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .chart-card {
+        margin-bottom: 3rem;
+        padding: 2rem;
+    }
+
+    .chart-card canvas {
+        max-width: 300px;
+        max-height: 300px;
+        margin: 0 auto;
+        display: block;
+    }
+
+    .offenders-section {
+        margin-bottom: 3rem;
+        padding: 2rem;
+    }
+
+    .offender-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 1rem 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    /* TABS */
+    .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .tab-btn {
+        padding: 0.5rem 1.2rem;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text);
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background 0.2s, color 0.2s;
+    }
+
+    .tab-btn:hover {
+        background: var(--card);
+    }
+
+    .tab-btn.active {
+        background: var(--text);
+        color: var(--bg);
+        border-color: var(--text);
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+        padding: 2rem;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th,
+    td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+    }
+
+    select {
+        padding: 0.5rem;
+        border-radius: 8px;
+    }
+
+    .severity {
+        padding: 0.3rem 0.8rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        color: white;
+    }
+
+    .Low { background: #15803d; }
+    .Medium { background: #ca8a04; }
+    .High { background: #dc2626; }
+    .Critical { background: #7f1d1d; }
+
+    .map-card {
+        padding: 2rem;
+        margin-bottom: 3rem;
+    }
+
+    #adminMap {
+        height: 500px;
+        width: 100%;
+        border-radius: 20px;
+        overflow: hidden;
+        margin-top: 1.5rem;
+    }
+</style>

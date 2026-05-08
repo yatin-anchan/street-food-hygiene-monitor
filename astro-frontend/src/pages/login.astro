@@ -1,0 +1,99 @@
+---
+import MainLayout from "../layouts/MainLayout.astro";
+---
+
+<MainLayout title="Admin Login">
+    <section>
+        <div class="container">
+            <div class="login-card card">
+
+                <h1>Admin Login</h1>
+                <p class="subtitle">Authorized access only</p>
+
+                <form id="loginForm">
+
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" placeholder="admin@test.com" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" placeholder="••••••••" />
+                    </div>
+
+                    <button type="submit" class="primary-btn" id="loginBtn">
+                        Login
+                    </button>
+
+                    <p id="statusMessage"></p>
+
+                </form>
+            </div>
+        </div>
+    </section>
+</MainLayout>
+
+<!-- ✅ No type="module" — Vite bundles this, bare imports resolve correctly -->
+<script>
+    import { supabase } from "../utils/supabase";
+
+    const form = document.getElementById("loginForm") as HTMLFormElement;
+    const statusMessage = document.getElementById("statusMessage")!;
+    const loginBtn = document.getElementById("loginBtn") as HTMLButtonElement;
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const email = (document.getElementById("email") as HTMLInputElement).value;
+        const password = (document.getElementById("password") as HTMLInputElement).value;
+
+        try {
+            loginBtn.disabled = true;
+            loginBtn.textContent = "Logging in...";
+
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+
+            if (error) throw error;
+
+            window.location.href = "/admin";
+
+        } catch (error: any) {
+            statusMessage.textContent = error.message;
+            statusMessage.className = "error";
+
+        } finally {
+            loginBtn.disabled = false;
+            loginBtn.textContent = "Login";
+        }
+    });
+</script>
+
+<style>
+    .login-card {
+        max-width: 500px;
+        margin: auto;
+        padding: 2rem;
+    }
+
+    .login-card h1 {
+        margin-bottom: 1rem;
+    }
+
+    .subtitle {
+        margin-bottom: 2rem;
+        color: var(--muted);
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .error {
+        color: #ef4444;
+        margin-top: 1rem;
+    }
+</style>

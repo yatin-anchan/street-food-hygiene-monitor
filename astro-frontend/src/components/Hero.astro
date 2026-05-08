@@ -1,0 +1,89 @@
+---
+
+---
+<section class="hero">
+    <div class="container hero-content">
+        <div class="hero-text">
+            <p class="badge">
+                Anonymous • Secure • Fast
+            </p>
+            <h1>
+                Share Honest Feedback
+                Without Fear.
+            </h1>
+            <p class="description">
+                Slient.Drop - A modern anonymous feedback platform
+                built with Astro, Cloudflare Workers,
+                KV caching, and Supabase.
+            </p>
+            <div class="hero-buttons">
+                <a href="/submit" class="primary-btn">
+                    Submit Feedback
+                </a>
+                <a href="/wall" class="secondary-btn">
+                    View Public Wall
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+
+    .hero {
+        padding: 7rem 0;
+    }
+
+    .hero-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .hero-text {
+        max-width: 800px;
+    }
+
+    .badge {
+        display: inline-block;
+        background: rgba(59, 130, 246, 0.15);
+        color: #93c5fd;
+        padding: 0.5rem 1rem;
+        border-radius: 999px;
+        margin-bottom: 1.5rem;
+        font-size: 0.9rem;
+    }
+
+    .hero h1 {
+        font-size: clamp(3rem, 7vw, 5rem);
+        margin-bottom: 1.5rem;
+        line-height: 1.05;
+    }
+
+    .description {
+        color: var(--muted);
+        font-size: 1.2rem;
+        max-width: 700px;
+        margin: auto;
+        margin-bottom: 2rem;
+    }
+
+    .hero-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .secondary-btn {
+        border: 1px solid var(--border);
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        transition: 0.2s ease;
+    }
+
+    .secondary-btn:hover {
+        background: var(--card);
+    }
+</style>
