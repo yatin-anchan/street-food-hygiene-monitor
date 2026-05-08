@@ -153,7 +153,7 @@ import MainLayout from "../../layouts/MainLayout.astro";
                 <div class="divider"></div>
 
                 <!-- Meta grid -->
-                <select class="status-select" style="margin-bottom: 0.5rem; margin-top: 0.5rem;" onchange="window.updateStatus(${c.id}, this.value)">
+                <select class="status-select" style="margin-bottom: 0.5rem; margin-top: 0.5rem;" onchange="window.updateStatus(${complaint.id}, this.value)">
             ${STATUSES.map(s => `<option value="${s}" ${complaint.status === s ? "selected" : ""}>${s}</option>`).join('')}
           </select>
                     <div class="meta-card" style="display:flex; flex-direction:column; gap:4px; margin-bottom:0.5rem; margin-top:0.5rem;">
