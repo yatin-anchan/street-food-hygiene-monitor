@@ -217,7 +217,7 @@ function renderAdminPagination(total: number) {
   if (totalPages <= 1) { el.innerHTML = ""; return; }
 
   let html = `<button class="page-btn" ${adminPage === 1 ? "disabled" : ""} onclick="window.goAdminPage(${adminPage - 1})">
-    <span class="material-icons-round">chevron_left</span>
+    <span class="material-icons-round"  style="border: 1px solid var(--border2); border-radius: 50rem; font-size: 32px !important; font-family: 'Material Icons Round' color: white;">chevron_left</span>
   </button>`;
 
   for (let i = 1; i <= totalPages; i++) {
@@ -225,11 +225,11 @@ function renderAdminPagination(total: number) {
       if (i === 2 || i === totalPages - 1) html += `<span class="page-dots">…</span>`;
       continue;
     }
-    html += `<button class="page-btn ${i === adminPage ? "active" : ""}" onclick="window.goAdminPage(${i})">${i}</button>`;
+    html += `<button class="page-btn ${i === adminPage ? "active" : ""}" onclick="window.goAdminPage(${i})" style="background: none; font-size: 18px !important; font-family: 'Material Icons Round' color: white;">${i}</button>`;
   }
 
   html += `<button class="page-btn" ${adminPage === totalPages ? "disabled" : ""} onclick="window.goAdminPage(${adminPage + 1})">
-    <span class="material-icons-round">chevron_right</span>
+    <span class="material-icons-round" style="border: 1px solid var(--border2); border-radius: 50rem; font-size: 32px !important; font-family: 'Material Icons Round' color: white;">chevron_right</span>
   </button>`;
 
   el.innerHTML = html;

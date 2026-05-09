@@ -31,6 +31,9 @@ The system is designed with a **serverless-first architecture** using Cloudflare
 * Interactive complaint wall
 * Map-based visualization of reports
 * Filtering by severity
+* Profanity Filter
+* Pagination for Public Wall and Admin Complaint Management
+* Search Bar
 
 ---
 

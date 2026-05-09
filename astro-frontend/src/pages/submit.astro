@@ -477,9 +477,31 @@ import MainLayout from "../layouts/MainLayout.astro";
     });
 
     // Upload stub
-    async function uploadImage(): Promise<string | null> {
-      return null;
-    }
+    import { supabase } from "../utils/supabase.js";
+
+async function uploadImage(): Promise<string | null> {
+  if (!croppedBlob) return null;
+
+  const fileName = `complaint-${Date.now()}.jpg`;
+
+  const { data, error } = await supabase.storage
+    .from("complaint-images")
+    .upload(fileName, croppedBlob, {
+      contentType: "image/jpeg",
+      upsert: false,
+    });
+
+  if (error) {
+    console.error("Upload error:", error.message);
+    return null;
+  }
+
+  const { data: publicUrl } = supabase.storage
+    .from("complaint-images")
+    .getPublicUrl(fileName);
+
+  return publicUrl.publicUrl;
+}
 
     // ── Submit ───────────────────────────────────────────────────────────────
     document.getElementById("feedbackForm")!.addEventListener("submit", async e => {

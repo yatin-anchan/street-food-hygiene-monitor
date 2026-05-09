@@ -237,6 +237,31 @@ import MainLayout from "../layouts/MainLayout.astro";
     }
   };
 
+  // ── Pagination ─────────────────────────────────────────────────────────────
+  function renderPagination() {
+    const el    = document.getElementById("pagination")!;
+    const total = Math.ceil(filtered.length / PAGE_SIZE);
+    if (total <= 1) { el.innerHTML = ""; return; }
+
+    let html = `<button class="page-btn" ${currentPage === 1 ? "disabled" : ""} onclick="goPage(${currentPage - 1})">
+      <span class="material-icons-round" style="border: 1px solid var(--border2); border-radius: 50rem; font-size: 32px !important; font-family: 'Material Icons Round' color: white;">chevron_left</span>
+    </button>`;
+
+    for (let i = 1; i <= total; i++) {
+      if (total > 7 && Math.abs(i - currentPage) > 2 && i !== 1 && i !== total) {
+        if (i === 2 || i === total - 1) html += `<span class="page-dots">…</span>`;
+        continue;
+      }
+      html += `<button class="page-btn ${i === currentPage ? "active" : ""}" onclick="goPage(${i})" style="background: none; font-size: 18px !important; font-family: 'Material Icons Round' color: white;">${i}</button>`;
+    }
+
+    html += `<button class="page-btn" ${currentPage === total ? "disabled" : ""} onclick="goPage(${currentPage + 1})">
+      <span class="material-icons-round" style="border: 1px solid var(--border2); border-radius: 50rem; font-size: 32px !important; font-family: 'Material Icons Round' color: white;">chevron_right</span>
+    </button>`;
+
+    el.innerHTML = html;
+  }
+
   (window as any).goPage = (page: number) => {
     currentPage = page;
     renderComplaints();
@@ -435,7 +460,9 @@ import MainLayout from "../layouts/MainLayout.astro";
   .page-btn {
     min-width: 38px; height: 38px; padding: 0 0.6rem;
     border-radius: 9px; border: 1px solid var(--border2);
-    background: var(--card); color: var(--text2);
+    background: none;
+    border-radius: 50rem;
+    border: 1px solid var(--border2); color: var(--text);
     font-size: 0.875rem; font-weight: 500; cursor: pointer;
     display: flex; align-items: center; justify-content: center; transition: all 0.2s;
   }
@@ -484,111 +511,4 @@ import MainLayout from "../layouts/MainLayout.astro";
   .toast-success { background: rgba(21,128,61,0.95); border-color: #15803d; color: #fff; }
   .toast-error   { background: rgba(220,38,38,0.95); border-color: #dc2626; color: #fff; }
   .toast .material-icons-round { font-size: 1.1rem !important; }
-
-  // ── Pagination ─────────────────────────────────────────────────────────────
-  /* ── Pagination ──────────────────────────────────────────────────────────── */
-  .pagination { margin-top: 3rem; }
-
-  .pagination-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-  }
-
-  .pagination-inner {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: var(--card);
-    border: 1px solid var(--border2);
-    border-radius: 999px;
-    padding: 0.45rem 0.6rem;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
-  }
-
-  .page-nav-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 0.5rem 1rem;
-    border-radius: 999px;
-    border: none;
-    background: transparent;
-    color: var(--text2);
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-  }
-  .page-nav-btn:hover:not(:disabled) {
-    background: var(--card2);
-    color: var(--text);
-  }
-  .page-nav-btn:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-  }
-  .page-nav-btn .material-icons-round { font-size: 1.1rem !important; }
-  .nav-label { font-size: 0.875rem; }
-
-  .page-numbers {
-    display: flex;
-    align-items: center;
-    gap: 0.2rem;
-  }
-
-  .page-btn {
-    min-width: 36px;
-    height: 36px;
-    padding: 0 0.3rem;
-    border-radius: 999px;
-    border: none;
-    background: transparent;
-    color: var(--text2);
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-  }
-  .page-btn:hover:not(.active) {
-    background: var(--card2);
-    color: var(--text);
-  }
-  .page-btn.active {
-    background: var(--primary);
-    color: #fff;
-    font-weight: 700;
-    box-shadow: 0 2px 12px rgba(79,142,247,0.35);
-  }
-
-  .page-dots {
-    color: var(--muted);
-    font-size: 0.875rem;
-    padding: 0 0.2rem;
-    user-select: none;
-    align-self: flex-end;
-    line-height: 2;
-  }
-
-  .pagination-info {
-    color: var(--muted);
-    font-size: 0.82rem;
-    letter-spacing: 0.01em;
-  }
-  .pagination-info strong {
-    color: var(--text);
-    font-weight: 600;
-  }
-
-  @media (max-width: 480px) {
-    .pagination-inner { padding: 0.35rem 0.4rem; gap: 0.25rem; }
-    .nav-label { display: none; }
-    .page-nav-btn { padding: 0.5rem 0.6rem; }
-    .page-btn { min-width: 32px; height: 32px; font-size: 0.8rem; }
-  }
 </style>
