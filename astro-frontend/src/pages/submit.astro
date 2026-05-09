@@ -25,11 +25,9 @@ import MainLayout from "../layouts/MainLayout.astro";
                 Vendor Name
               </label>
               <input
-                type="text"
-                id="vendorName"
+                type="text" id="vendorName"
                 placeholder="e.g. Sharma Vada Pav"
-                autocomplete="off"
-                maxlength="60"
+                autocomplete="off" maxlength="60"
               />
               <span class="char-counter" id="vendorNameCounter">0 / 60</span>
             </div>
@@ -68,7 +66,7 @@ import MainLayout from "../layouts/MainLayout.astro";
 
           <!-- Severity -->
           <div class="form-group">
-            <label for="severity">
+            <label>
               <span class="material-icons-round">priority_high</span>
               Severity Level
             </label>
@@ -93,7 +91,6 @@ import MainLayout from "../layouts/MainLayout.astro";
               <p class="file-hint">JPG, PNG up to 10MB · Will be cropped to 1:1</p>
               <input type="file" id="image" accept="image/*" />
             </div>
-
             <div id="imagePreviewWrap" class="image-preview-wrap" style="display:none">
               <img id="imagePreview" class="img-fixed img-cropped-preview" src="" alt="Preview" />
               <button type="button" id="removeImage" class="remove-img">
@@ -114,7 +111,7 @@ import MainLayout from "../layouts/MainLayout.astro";
             </label>
             <textarea
               id="description"
-              placeholder="Describe what you observed. Be specific about date, time, and conditions..."
+              placeholder="Describe what you observed. Be specific about date, time, and conditions…"
               maxlength="500"
             ></textarea>
             <span class="char-counter" id="descCounter">0 / 500</span>
@@ -138,6 +135,12 @@ import MainLayout from "../layouts/MainLayout.astro";
             </div>
           </div>
 
+          <!-- Rate limit indicator -->
+          <div class="rate-limit-bar" id="rateLimitBar" style="display:none">
+            <span class="material-icons-round">timer</span>
+            <span id="rateLimitText">Please wait before submitting again</span>
+          </div>
+
           <button type="submit" class="primary-btn submit-btn" id="submitBtn">
             <span class="material-icons-round">send</span>
             Submit Complaint
@@ -156,24 +159,14 @@ import MainLayout from "../layouts/MainLayout.astro";
         <h2><span class="material-icons-round">crop</span>Crop Your Image</h2>
         <p class="crop-hint">Drag to reposition · Scroll to zoom</p>
       </div>
-
       <div class="crop-canvas-wrap">
         <canvas id="cropCanvas"></canvas>
         <div class="crop-overlay">
           <div class="crop-frame" id="cropFrame"></div>
         </div>
       </div>
-
       <div class="crop-controls">
-        <input
-          type="range"
-          id="cropZoom"
-          min="1"
-          max="3"
-          step="0.01"
-          value="1"
-          class="zoom-slider"
-        />
+        <input type="range" id="cropZoom" min="1" max="3" step="0.01" value="1" class="zoom-slider" />
         <div class="crop-actions">
           <button type="button" class="secondary-btn" id="cancelCrop">Cancel</button>
           <button type="button" class="primary-btn" id="confirmCrop">
@@ -185,44 +178,127 @@ import MainLayout from "../layouts/MainLayout.astro";
     </div>
   </div>
 
+  <!-- Toast -->
+  <div id="toast" class="toast" aria-live="polite"></div>
+
   <script>
-    const statusMessage = document.getElementById("statusMessage");
-    const submitBtn = document.getElementById("submitBtn");
-    const imageInput = document.getElementById("image");
-    const locationBtn = document.getElementById("locationBtn");
-    const locationText = document.getElementById("locationText");
-    const locationStatus = document.getElementById("locationStatus");
+    // ── Profanity filter ─────────────────────────────────────────────────────
+    // Lightweight list — extend as needed
+    const PROFANITY_LIST = [
+      "fuck", "shit", "bitch", "asshole", "bastard", "damn", "crap",
+      "piss", "dick", "cock", "pussy", "cunt", "motherfucker", "fucker",
+      "bullshit", "jackass", "moron", "idiot", "retard", "slut", "whore",
+    ];
 
-    let latitude = null;
-    let longitude = null;
+    function containsProfanity(text: string): boolean {
+      const lower = text.toLowerCase().replace(/[^a-z0-9\s]/g, "");
+      return PROFANITY_LIST.some(word => {
+        const regex = new RegExp(`\\b${word}\\b`, "i");
+        return regex.test(lower);
+      });
+    }
 
-    // Cropper state
+    function sanitizeText(text: string): string {
+      let out = text;
+      PROFANITY_LIST.forEach(word => {
+        const regex = new RegExp(`\\b${word}\\b`, "gi");
+        out = out.replace(regex, "*".repeat(word.length));
+      });
+      return out;
+    }
+
+    // ── Rate limiting ────────────────────────────────────────────────────────
+    const RATE_LIMIT_MS = 60_000; // 1 minute between submissions
+    const RATE_LIMIT_KEY = "lastSubmitTime";
+
+    function getRemainingCooldown(): number {
+      const last = parseInt(localStorage.getItem(RATE_LIMIT_KEY) || "0", 10);
+      const elapsed = Date.now() - last;
+      return Math.max(0, RATE_LIMIT_MS - elapsed);
+    }
+
+    function setSubmitTime() {
+      localStorage.setItem(RATE_LIMIT_KEY, String(Date.now()));
+    }
+
+    let cooldownTimer: ReturnType<typeof setInterval> | null = null;
+
+    function startCooldownUI(remaining: number) {
+      const bar = document.getElementById("rateLimitBar")!;
+      const text = document.getElementById("rateLimitText")!;
+      const btn = document.getElementById("submitBtn") as HTMLButtonElement;
+
+      bar.style.display = "flex";
+      btn.disabled = true;
+
+      const update = () => {
+        const left = getRemainingCooldown();
+        if (left <= 0) {
+          bar.style.display = "none";
+          btn.disabled = false;
+          if (cooldownTimer) clearInterval(cooldownTimer);
+          cooldownTimer = null;
+          return;
+        }
+        const secs = Math.ceil(left / 1000);
+        text.textContent = `You can submit again in ${secs}s`;
+      };
+
+      update();
+      cooldownTimer = setInterval(update, 500);
+    }
+
+    // Check cooldown on load
+    window.addEventListener("DOMContentLoaded", () => {
+      const remaining = getRemainingCooldown();
+      if (remaining > 0) startCooldownUI(remaining);
+    });
+
+    // ── Toast ────────────────────────────────────────────────────────────────
+    function showToast(msg: string, type: "success" | "error" | "info" = "info") {
+      const t = document.getElementById("toast")!;
+      const icons: Record<string, string> = { success: "check_circle", error: "error", info: "info" };
+      t.className = `toast toast-${type} show`;
+      t.innerHTML = `<span class="material-icons-round">${icons[type]}</span><span>${msg}</span>`;
+      setTimeout(() => t.classList.remove("show"), 4000);
+    }
+
+    // ── Timestamp ────────────────────────────────────────────────────────────
+    function formatSubmitTime(): string {
+      return new Date().toLocaleString("en-IN", {
+        day: "numeric", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit"
+      });
+    }
+
+    // ── Cropper state ────────────────────────────────────────────────────────
     const CROP_SIZE = 400;
     let cropImg = new Image();
     let cropScale = 1;
-    let cropOffsetX = 0;
-    let cropOffsetY = 0;
+    let cropOffsetX = 0, cropOffsetY = 0;
     let cropDragging = false;
-    let cropDragStartX = 0;
-    let cropDragStartY = 0;
-    let cropDragOriginX = 0;
-    let cropDragOriginY = 0;
-    let croppedBlob = null;
-    let originalFile = null;
+    let cropDragStartX = 0, cropDragStartY = 0;
+    let cropDragOriginX = 0, cropDragOriginY = 0;
+    let croppedBlob: Blob | null = null;
+    let originalFile: File | null = null;
+    let latitude: number | null = null;
+    let longitude: number | null = null;
 
-    const cropOverlay = document.getElementById("cropModalOverlay");
-    const cropCanvas = document.getElementById("cropCanvas");
-    const ctx = cropCanvas.getContext("2d");
-    const zoomSlider = document.getElementById("cropZoom");
+    const cropOverlay = document.getElementById("cropModalOverlay")!;
+    const cropCanvas = document.getElementById("cropCanvas") as HTMLCanvasElement;
+    const ctx = cropCanvas.getContext("2d")!;
+    const zoomSlider = document.getElementById("cropZoom") as HTMLInputElement;
+    const imageInput = document.getElementById("image") as HTMLInputElement;
+    const locationBtn = document.getElementById("locationBtn")!;
+    const locationText = document.getElementById("locationText")!;
+    const locationStatus = document.getElementById("locationStatus")!;
 
     cropCanvas.width = CROP_SIZE;
     cropCanvas.height = CROP_SIZE;
 
     function drawCrop() {
       ctx.clearRect(0, 0, CROP_SIZE, CROP_SIZE);
-      const w = cropImg.naturalWidth * cropScale;
-      const h = cropImg.naturalHeight * cropScale;
-      ctx.drawImage(cropImg, cropOffsetX, cropOffsetY, w, h);
+      ctx.drawImage(cropImg, cropOffsetX, cropOffsetY, cropImg.naturalWidth * cropScale, cropImg.naturalHeight * cropScale);
     }
 
     function clampOffsets() {
@@ -232,262 +308,230 @@ import MainLayout from "../layouts/MainLayout.astro";
       cropOffsetY = Math.min(0, Math.max(CROP_SIZE - h, cropOffsetY));
     }
 
-    function openCropper(file) {
+    function openCropper(file: File) {
       originalFile = file;
       const url = URL.createObjectURL(file);
       cropImg = new Image();
-
       cropImg.onload = () => {
-        const ratio = Math.max(
-          CROP_SIZE / cropImg.naturalWidth,
-          CROP_SIZE / cropImg.naturalHeight
-        );
-
+        const ratio = Math.max(CROP_SIZE / cropImg.naturalWidth, CROP_SIZE / cropImg.naturalHeight);
         cropScale = ratio;
         cropOffsetX = (CROP_SIZE - cropImg.naturalWidth * cropScale) / 2;
         cropOffsetY = (CROP_SIZE - cropImg.naturalHeight * cropScale) / 2;
-
-        zoomSlider.value = "1";
         zoomSlider.min = String(ratio);
         zoomSlider.max = String(ratio * 3);
         zoomSlider.step = String(ratio * 0.01);
-
+        zoomSlider.value = "1";
         drawCrop();
         cropOverlay.classList.add("active");
         document.body.style.overflow = "hidden";
         URL.revokeObjectURL(url);
       };
-
       cropImg.src = url;
     }
 
-    cropCanvas.addEventListener("mousedown", (e) => {
+    cropCanvas.addEventListener("mousedown", e => {
       cropDragging = true;
-      cropDragStartX = e.clientX;
-      cropDragStartY = e.clientY;
-      cropDragOriginX = cropOffsetX;
-      cropDragOriginY = cropOffsetY;
+      cropDragStartX = e.clientX; cropDragStartY = e.clientY;
+      cropDragOriginX = cropOffsetX; cropDragOriginY = cropOffsetY;
       cropCanvas.style.cursor = "grabbing";
     });
-
-    window.addEventListener("mousemove", (e) => {
+    window.addEventListener("mousemove", e => {
       if (!cropDragging) return;
       cropOffsetX = cropDragOriginX + (e.clientX - cropDragStartX);
       cropOffsetY = cropDragOriginY + (e.clientY - cropDragStartY);
-      clampOffsets();
-      drawCrop();
+      clampOffsets(); drawCrop();
     });
-
-    window.addEventListener("mouseup", () => {
-      cropDragging = false;
-      cropCanvas.style.cursor = "grab";
-    });
-
-    cropCanvas.addEventListener(
-      "touchstart",
-      (e) => {
-        const t = e.touches[0];
-        cropDragging = true;
-        cropDragStartX = t.clientX;
-        cropDragStartY = t.clientY;
-        cropDragOriginX = cropOffsetX;
-        cropDragOriginY = cropOffsetY;
-      },
-      { passive: true }
-    );
-
-    window.addEventListener(
-      "touchmove",
-      (e) => {
-        if (!cropDragging) return;
-        const t = e.touches[0];
-        cropOffsetX = cropDragOriginX + (t.clientX - cropDragStartX);
-        cropOffsetY = cropDragOriginY + (t.clientY - cropDragStartY);
-        clampOffsets();
-        drawCrop();
-      },
-      { passive: true }
-    );
-
-    window.addEventListener("touchend", () => {
-      cropDragging = false;
-    });
+    window.addEventListener("mouseup", () => { cropDragging = false; cropCanvas.style.cursor = "grab"; });
+    cropCanvas.addEventListener("touchstart", e => {
+      const t = e.touches[0];
+      cropDragging = true;
+      cropDragStartX = t.clientX; cropDragStartY = t.clientY;
+      cropDragOriginX = cropOffsetX; cropDragOriginY = cropOffsetY;
+    }, { passive: true });
+    window.addEventListener("touchmove", e => {
+      if (!cropDragging) return;
+      const t = e.touches[0];
+      cropOffsetX = cropDragOriginX + (t.clientX - cropDragStartX);
+      cropOffsetY = cropDragOriginY + (t.clientY - cropDragStartY);
+      clampOffsets(); drawCrop();
+    }, { passive: true });
+    window.addEventListener("touchend", () => { cropDragging = false; });
 
     zoomSlider.addEventListener("input", () => {
       const newScale = parseFloat(zoomSlider.value);
-      const cx = CROP_SIZE / 2;
-      const cy = CROP_SIZE / 2;
-
+      const cx = CROP_SIZE / 2, cy = CROP_SIZE / 2;
       cropOffsetX = cx - (cx - cropOffsetX) * (newScale / cropScale);
       cropOffsetY = cy - (cy - cropOffsetY) * (newScale / cropScale);
       cropScale = newScale;
-
-      clampOffsets();
-      drawCrop();
+      clampOffsets(); drawCrop();
     });
 
-    cropCanvas.addEventListener(
-      "wheel",
-      (e) => {
-        e.preventDefault();
-        const delta = e.deltaY > 0 ? -0.05 : 0.05;
-        const newScale = Math.max(
-          parseFloat(zoomSlider.min),
-          Math.min(parseFloat(zoomSlider.max), cropScale + delta * cropScale)
-        );
+    cropCanvas.addEventListener("wheel", e => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.05 : 0.05;
+      const newScale = Math.max(parseFloat(zoomSlider.min), Math.min(parseFloat(zoomSlider.max), cropScale + delta * cropScale));
+      const cx = CROP_SIZE / 2, cy = CROP_SIZE / 2;
+      cropOffsetX = cx - (cx - cropOffsetX) * (newScale / cropScale);
+      cropOffsetY = cy - (cy - cropOffsetY) * (newScale / cropScale);
+      cropScale = newScale;
+      zoomSlider.value = String(cropScale);
+      clampOffsets(); drawCrop();
+    }, { passive: false });
 
-        const cx = CROP_SIZE / 2;
-        const cy = CROP_SIZE / 2;
-        cropOffsetX = cx - (cx - cropOffsetX) * (newScale / cropScale);
-        cropOffsetY = cy - (cy - cropOffsetY) * (newScale / cropScale);
-        cropScale = newScale;
-        zoomSlider.value = String(cropScale);
-
-        clampOffsets();
-        drawCrop();
-      },
-      { passive: false }
-    );
-
-    document.getElementById("confirmCrop").addEventListener("click", () => {
+    document.getElementById("confirmCrop")!.addEventListener("click", () => {
       const out = document.createElement("canvas");
-      out.width = CROP_SIZE;
-      out.height = CROP_SIZE;
-      out.getContext("2d").drawImage(cropCanvas, 0, 0);
-
-      out.toBlob(
-        (blob) => {
-          if (!blob) return;
-          croppedBlob = blob;
-          const url = URL.createObjectURL(blob);
-          const prev = document.getElementById("imagePreview");
-          prev.src = url;
-          document.getElementById("imagePreviewWrap").style.display = "flex";
-          document.getElementById("fileDrop").style.display = "none";
-          cropOverlay.classList.remove("active");
-          document.body.style.overflow = "";
-        },
-        "image/jpeg",
-        0.92
-      );
+      out.width = CROP_SIZE; out.height = CROP_SIZE;
+      out.getContext("2d")!.drawImage(cropCanvas, 0, 0);
+      out.toBlob(blob => {
+        if (!blob) return;
+        croppedBlob = blob;
+        const url = URL.createObjectURL(blob);
+        (document.getElementById("imagePreview") as HTMLImageElement).src = url;
+        document.getElementById("imagePreviewWrap")!.style.display = "flex";
+        document.getElementById("fileDrop")!.style.display = "none";
+        cropOverlay.classList.remove("active");
+        document.body.style.overflow = "";
+      }, "image/jpeg", 0.92);
     });
 
-    document.getElementById("cancelCrop").addEventListener("click", () => {
+    document.getElementById("cancelCrop")!.addEventListener("click", () => {
       cropOverlay.classList.remove("active");
       document.body.style.overflow = "";
       imageInput.value = "";
     });
 
-    document.getElementById("recropImage").addEventListener("click", () => {
+    document.getElementById("recropImage")!.addEventListener("click", () => {
       if (originalFile) openCropper(originalFile);
     });
 
-    document.querySelectorAll(".sev-btn").forEach((btn) => {
+    document.querySelectorAll(".sev-btn").forEach(btn => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".sev-btn").forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll(".sev-btn").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
-        document.getElementById("severity").value = btn.dataset.val;
+        (document.getElementById("severity") as HTMLInputElement).value = (btn as HTMLElement).dataset.val!;
       });
     });
 
     imageInput.addEventListener("change", () => {
       const file = imageInput.files?.[0];
       if (!file) return;
+      if (file.size > 10 * 1024 * 1024) {
+        showToast("Image must be under 10MB", "error");
+        return;
+      }
       openCropper(file);
     });
 
-    document.getElementById("removeImage").addEventListener("click", () => {
+    document.getElementById("removeImage")!.addEventListener("click", () => {
       imageInput.value = "";
       croppedBlob = null;
-      document.getElementById("imagePreviewWrap").style.display = "none";
-      document.getElementById("fileDrop").style.display = "flex";
+      document.getElementById("imagePreviewWrap")!.style.display = "none";
+      document.getElementById("fileDrop")!.style.display = "flex";
     });
 
-    const fileDrop = document.getElementById("fileDrop");
+    const fileDrop = document.getElementById("fileDrop")!;
     fileDrop.addEventListener("click", () => imageInput.click());
-    fileDrop.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      fileDrop.classList.add("drag-over");
-    });
+    fileDrop.addEventListener("dragover", e => { e.preventDefault(); fileDrop.classList.add("drag-over"); });
     fileDrop.addEventListener("dragleave", () => fileDrop.classList.remove("drag-over"));
-    fileDrop.addEventListener("drop", (e) => {
+    fileDrop.addEventListener("drop", e => {
       e.preventDefault();
       fileDrop.classList.remove("drag-over");
       const file = e.dataTransfer?.files?.[0];
       if (file) openCropper(file);
     });
 
-    function initCounter(inputId, counterId, max) {
-      const el = document.getElementById(inputId);
-      const counter = document.getElementById(counterId);
-
+    // Char counters
+    function initCounter(inputId: string, counterId: string, max: number) {
+      const el = document.getElementById(inputId) as HTMLInputElement | HTMLTextAreaElement;
+      const counter = document.getElementById(counterId)!;
       const update = () => {
         const len = el.value.length;
         counter.textContent = `${len} / ${max}`;
         counter.classList.toggle("counter-warn", len >= max * 0.85);
         counter.classList.toggle("counter-full", len >= max);
       };
-
       el.addEventListener("input", update);
       update();
     }
-
     initCounter("vendorName", "vendorNameCounter", 60);
     initCounter("description", "descCounter", 500);
 
-    function setLocation(lat, lng) {
-      latitude = lat;
-      longitude = lng;
-      locationText.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-      locationStatus.classList.add("has-location");
-      locationStatus.querySelector(".material-icons-round").textContent = "location_on";
-    }
-
+    // Location
     locationBtn.addEventListener("click", () => {
-      locationBtn.innerHTML = '<span class="material-icons-round">hourglass_empty</span>Locating...';
-
+      locationBtn.innerHTML = '<span class="material-icons-round">hourglass_empty</span>Locating…';
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setLocation(pos.coords.latitude, pos.coords.longitude);
+        pos => {
+          latitude = pos.coords.latitude;
+          longitude = pos.coords.longitude;
+          locationText.textContent = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+          locationStatus.classList.add("has-location");
+          locationStatus.querySelector(".material-icons-round")!.textContent = "location_on";
           locationBtn.innerHTML = '<span class="material-icons-round">my_location</span>Use Current Location';
+          showToast("Location captured", "success");
         },
         () => {
-          alert("Unable to access location.");
           locationBtn.innerHTML = '<span class="material-icons-round">my_location</span>Use Current Location';
+          showToast("Could not access location", "error");
         }
       );
     });
 
-    async function uploadImage() {
+    // Upload stub
+    async function uploadImage(): Promise<string | null> {
       return null;
     }
 
-    document.getElementById("feedbackForm").addEventListener("submit", async (e) => {
+    // ── Submit ───────────────────────────────────────────────────────────────
+    document.getElementById("feedbackForm")!.addEventListener("submit", async e => {
       e.preventDefault();
 
-      const vendorName = document.getElementById("vendorName").value;
-      const vendorType = document.getElementById("vendorType").value;
-      const severity = document.getElementById("severity").value;
-      const description = document.getElementById("description").value;
-      const checkedIssues = Array.from(
-        document.querySelectorAll('input[type="checkbox"]:checked')
-      ).map((c) => c.value);
-
-      if (description.trim().length < 10) {
-        showStatus("Description must be at least 10 characters.", "error");
+      // Rate limit check
+      const remaining = getRemainingCooldown();
+      if (remaining > 0) {
+        showToast(`Please wait ${Math.ceil(remaining / 1000)}s before submitting again`, "error");
+        startCooldownUI(remaining);
         return;
       }
 
+      const vendorName = (document.getElementById("vendorName") as HTMLInputElement).value.trim();
+      const vendorType = (document.getElementById("vendorType") as HTMLSelectElement).value;
+      const severity = (document.getElementById("severity") as HTMLInputElement).value;
+      const description = (document.getElementById("description") as HTMLTextAreaElement).value.trim();
+      const checkedIssues = Array.from(
+        document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:checked')
+      ).map(c => c.value);
+
+      // Validation
+      if (!vendorName) {
+        showToast("Vendor name is required", "error");
+        return;
+      }
+      if (description.length < 10) {
+        showToast("Description must be at least 10 characters", "error");
+        return;
+      }
+      if (checkedIssues.length === 0) {
+        showToast("Please select at least one hygiene issue", "error");
+        return;
+      }
+
+      // Profanity check
+      const fieldsToCheck = [vendorName, description];
+      for (const field of fieldsToCheck) {
+        if (containsProfanity(field)) {
+          showToast("Please remove inappropriate language before submitting", "error");
+          return;
+        }
+      }
+
+      const submitBtn = document.getElementById("submitBtn") as HTMLButtonElement;
       try {
         submitBtn.disabled = true;
-        submitBtn.innerHTML =
-          '<span class="material-icons-round">hourglass_empty</span>Submitting...';
+        submitBtn.innerHTML = '<span class="material-icons-round">hourglass_empty</span>Submitting…';
 
         const imageUrl = await uploadImage();
-        const apiUrl =
-          "https://worker-api.yatin-a-anchan.workers.dev";
 
-        const response = await fetch(`${apiUrl}/api/submit`, {
+        const res = await fetch("https://worker-api.yatin-a-anchan.workers.dev/api/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -502,43 +546,40 @@ import MainLayout from "../layouts/MainLayout.astro";
           }),
         });
 
-        if (!response.ok) throw new Error(`Server error: ${response.status}`);
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
 
-        showStatus(
-          "Complaint submitted successfully. Thank you for keeping your community safe!",
-          "success"
-        );
+        // Set rate limit
+        setSubmitTime();
+        startCooldownUI(RATE_LIMIT_MS);
 
-        document.getElementById("feedbackForm").reset();
-        croppedBlob = null;
-        originalFile = null;
-        latitude = null;
-        longitude = null;
+        showToast(`Complaint submitted at ${formatSubmitTime()} ✓`, "success");
 
+        // Reset form
+        (document.getElementById("feedbackForm") as HTMLFormElement).reset();
+        croppedBlob = null; originalFile = null; latitude = null; longitude = null;
         locationText.textContent = "No location selected";
         locationStatus.classList.remove("has-location");
-        locationStatus.querySelector(".material-icons-round").textContent = "location_off";
-
-        document.getElementById("imagePreviewWrap").style.display = "none";
-        document.getElementById("fileDrop").style.display = "flex";
-
+        locationStatus.querySelector(".material-icons-round")!.textContent = "location_off";
+        document.getElementById("imagePreviewWrap")!.style.display = "none";
+        document.getElementById("fileDrop")!.style.display = "flex";
         document.querySelectorAll(".sev-btn").forEach((b, i) => b.classList.toggle("active", i === 3));
-        document.getElementById("severity").value = "Critical";
-        document.getElementById("vendorNameCounter").textContent = "0 / 60";
-        document.getElementById("descCounter").textContent = "0 / 500";
-      } catch (err) {
-        showStatus("Submission failed. Please try again.", "error");
+        (document.getElementById("severity") as HTMLInputElement).value = "Critical";
+        document.getElementById("vendorNameCounter")!.textContent = "0 / 60";
+        document.getElementById("descCounter")!.textContent = "0 / 500";
+
+        // Show status message
+        const msg = document.getElementById("statusMessage")!;
+        msg.textContent = "Complaint submitted successfully. Thank you for keeping your community safe!";
+        msg.className = "status-msg success";
+        msg.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+      } catch {
+        showToast("Submission failed. Please try again.", "error");
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<span class="material-icons-round">send</span>Submit Complaint';
       }
     });
-
-    function showStatus(msg, type) {
-      statusMessage.textContent = msg;
-      statusMessage.className = `status-msg ${type}`;
-      statusMessage.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
   </script>
 
   <style>
@@ -551,246 +592,158 @@ import MainLayout from "../layouts/MainLayout.astro";
     .subtitle { color:var(--muted); font-size:0.95rem; }
 
     .submit-form { display:flex; flex-direction:column; gap:1.75rem; }
-
     .form-row { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; }
-    @media (max-width:600px) {
-      .form-row { grid-template-columns:1fr; }
-    }
+    @media (max-width:600px) { .form-row { grid-template-columns:1fr; } }
 
     .form-group { display:flex; flex-direction:column; gap:0.5rem; }
     .form-group label { display:flex; align-items:center; gap:0.4rem; font-weight:600; font-size:0.9rem; }
     .form-group label .material-icons-round { font-size:1rem !important; color:var(--primary); }
 
-    .char-counter {
-      align-self:flex-end;
-      font-size:0.75rem;
-      color:var(--muted);
-      transition:color 0.2s;
-      user-select:none;
-    }
+    .char-counter { align-self:flex-end; font-size:0.75rem; color:var(--muted); transition:color 0.2s; user-select:none; }
     .char-counter.counter-warn { color: var(--medium, #ca8a04); }
     .char-counter.counter-full { color: var(--high, #dc2626); font-weight:700; }
 
     .checkbox-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:0.6rem; }
     .check-label {
-      display:flex;
-      align-items:center;
-      gap:0.6rem;
-      cursor:pointer;
-      padding:0.6rem 0.9rem;
-      border-radius:var(--radius-sm);
-      border:1px solid var(--border2);
-      background:var(--bg2);
-      font-size:0.9rem;
-      transition:all 0.2s;
+      display:flex; align-items:center; gap:0.6rem; cursor:pointer;
+      padding:0.6rem 0.9rem; border-radius:var(--radius-sm);
+      border:1px solid var(--border2); background:var(--bg2);
+      font-size:0.9rem; transition:all 0.2s;
     }
     .check-label:hover { border-color:var(--primary); background:var(--primary-glow); }
     .check-label input[type="checkbox"] { display:none; }
     .check-box {
-      width:18px;
-      height:18px;
-      border-radius:5px;
-      flex-shrink:0;
-      border:2px solid var(--border2);
-      background:var(--bg);
-      transition:all 0.2s;
-      position:relative;
+      width:18px; height:18px; border-radius:5px; flex-shrink:0;
+      border:2px solid var(--border2); background:var(--bg);
+      transition:all 0.2s; position:relative;
     }
     .check-label input:checked ~ .check-box { background:var(--primary); border-color:var(--primary); }
     .check-label input:checked ~ .check-box::after {
-      content:'';
-      position:absolute;
-      left:4px;
-      top:1px;
-      width:6px;
-      height:10px;
-      border:2px solid white;
-      border-top:none;
-      border-left:none;
-      transform:rotate(45deg);
+      content:''; position:absolute; left:4px; top:1px;
+      width:6px; height:10px; border:2px solid white;
+      border-top:none; border-left:none; transform:rotate(45deg);
     }
 
     .severity-btns { display:flex; gap:0.5rem; flex-wrap:wrap; }
     .sev-btn {
-      padding:0.5rem 1.25rem;
-      border-radius:999px;
-      border:1px solid var(--border2);
-      background:transparent;
-      color:var(--text2);
-      font-size:0.875rem;
-      font-weight:600;
-      cursor:pointer;
-      transition:all 0.2s;
+      padding:0.5rem 1.25rem; border-radius:999px; border:1px solid var(--border2);
+      background:transparent; color:var(--text2); font-size:0.875rem; font-weight:600;
+      cursor:pointer; transition:all 0.2s;
     }
-    .sev-btn[data-val="Low"].active { background:var(--low-bg); color:var(--low); border-color:var(--low); }
+    .sev-btn[data-val="Low"].active    { background:var(--low-bg); color:var(--low); border-color:var(--low); }
     .sev-btn[data-val="Medium"].active { background:var(--medium-bg); color:var(--medium); border-color:var(--medium); }
-    .sev-btn[data-val="High"].active { background:var(--high-bg); color:var(--high); border-color:var(--high); }
+    .sev-btn[data-val="High"].active   { background:var(--high-bg); color:var(--high); border-color:var(--high); }
     .sev-btn[data-val="Critical"].active { background:var(--critical-bg); color:var(--critical); border-color:var(--critical); }
-    .sev-btn:hover:not(.active) { background:var(--card2); border-color:var(--border2); }
+    .sev-btn:hover:not(.active) { background:var(--card2); }
 
     .file-drop {
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:0.5rem;
-      padding:2rem;
-      border:2px dashed var(--border2);
-      border-radius:var(--radius);
-      cursor:pointer;
-      transition:all 0.2s;
-      background:var(--bg2);
-      position:relative;
+      display:flex; flex-direction:column; align-items:center; gap:0.5rem;
+      padding:2rem; border:2px dashed var(--border2); border-radius:var(--radius);
+      cursor:pointer; transition:all 0.2s; background:var(--bg2); position:relative;
     }
     .file-drop input { position:absolute; inset:0; opacity:0; cursor:pointer; }
     .file-drop:hover, .file-drop.drag-over { border-color:var(--primary); background:var(--primary-glow); }
     .drop-icon { font-size:2rem !important; color:var(--muted); }
-    .file-link { color:var(--primary); text-decoration:underline; cursor:pointer; }
+    .file-link { color:var(--primary); text-decoration:underline; }
     .file-hint { font-size:0.8rem; color:var(--muted); }
 
     .image-preview-wrap {
-      display:flex !important;
-      align-items:center;
-      gap:0.75rem;
-      padding:0.75rem;
-      background:var(--bg2);
-      border:1px solid var(--border2);
-      border-radius:var(--radius);
+      display:flex !important; align-items:center; gap:0.75rem;
+      padding:0.75rem; background:var(--bg2);
+      border:1px solid var(--border2); border-radius:var(--radius);
     }
     .img-cropped-preview {
-      display:block !important;
-      width:80px !important;
-      height:80px !important;
-      min-width:80px !important;
-      max-width:80px !important;
-      min-height:80px !important;
-      max-height:80px !important;
-      object-fit:cover !important;
-      border-radius:10px !important;
-      flex-shrink:0 !important;
+      width:80px !important; height:80px !important;
+      object-fit:cover !important; border-radius:10px !important; flex-shrink:0 !important;
     }
     .remove-img {
-      background:rgba(0,0,0,0.5);
-      color:white;
-      border:none;
-      width:30px;
-      height:30px;
-      border-radius:50%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      cursor:pointer;
-      transition:background 0.15s;
+      background:rgba(0,0,0,0.5); color:white; border:none;
+      width:30px; height:30px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; transition:background 0.15s;
     }
     .remove-img:hover { background:var(--high); }
     .remove-img .material-icons-round { font-size:0.9rem !important; }
     .recrop-btn {
-      display:inline-flex;
-      align-items:center;
-      gap:0.3rem;
-      padding:0.35rem 0.8rem;
-      font-size:0.8rem;
-      border-radius:var(--radius-sm);
-      border:1px solid var(--border2);
-      background:transparent;
-      color:var(--primary);
-      cursor:pointer;
-      transition:background 0.15s;
+      display:inline-flex; align-items:center; gap:0.3rem;
+      padding:0.35rem 0.8rem; font-size:0.8rem;
+      border-radius:var(--radius-sm); border:1px solid var(--border2);
+      background:transparent; color:var(--primary); cursor:pointer; transition:background 0.15s;
     }
     .recrop-btn:hover { background:var(--primary-glow); }
     .recrop-btn .material-icons-round { font-size:0.9rem !important; }
 
     .location-btns { display:flex; gap:0.75rem; flex-wrap:wrap; }
     .location-status {
-      display:flex;
-      align-items:center;
-      gap:0.5rem;
-      color:var(--muted);
-      font-size:0.875rem;
-      margin-top:0.25rem;
-      padding:0.6rem 0.9rem;
-      border-radius:var(--radius-sm);
-      background:var(--bg2);
-      border:1px solid var(--border);
-      transition:all 0.2s;
+      display:flex; align-items:center; gap:0.5rem;
+      color:var(--muted); font-size:0.875rem; margin-top:0.25rem;
+      padding:0.6rem 0.9rem; border-radius:var(--radius-sm);
+      background:var(--bg2); border:1px solid var(--border); transition:all 0.2s;
     }
-    .location-status.has-location {
-      color:var(--low);
-      border-color:rgba(34,197,94,0.2);
-      background:var(--low-bg);
-    }
+    .location-status.has-location { color:var(--low); border-color:rgba(34,197,94,0.2); background:var(--low-bg); }
     .location-status .material-icons-round { font-size:1rem !important; }
 
-    .submit-btn { width:100%; justify-content:center; padding:1rem; font-size:1rem; }
+    /* Rate limit bar */
+    .rate-limit-bar {
+      display:flex; align-items:center; gap:0.6rem;
+      padding:0.75rem 1rem; border-radius:var(--radius-sm);
+      background:rgba(202,138,4,0.1); border:1px solid rgba(202,138,4,0.3);
+      color:#ca8a04; font-size:0.875rem; font-weight:500;
+    }
+    .rate-limit-bar .material-icons-round { font-size:1.1rem !important; }
 
+    .submit-btn { width:100%; justify-content:center; padding:1rem; font-size:1rem; }
     .status-msg { padding:0.875rem 1rem; border-radius:var(--radius-sm); font-size:0.9rem; display:none; }
     .status-msg.success { display:block; background:var(--low-bg); color:var(--low); border:1px solid rgba(34,197,94,0.2); }
-    .status-msg.error { display:block; background:var(--high-bg); color:var(--high); border:1px solid rgba(239,68,68,0.2); }
+    .status-msg.error   { display:block; background:var(--high-bg); color:var(--high); border:1px solid rgba(239,68,68,0.2); }
 
+    /* Crop modal */
     .crop-modal-overlay {
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,0.85);
-      z-index:600;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      opacity:0;
-      visibility:hidden;
-      transition:all 0.3s;
-      backdrop-filter:blur(8px);
+      position:fixed; inset:0; background:rgba(0,0,0,0.85);
+      z-index:600; display:flex; align-items:center; justify-content:center;
+      opacity:0; visibility:hidden; transition:all 0.3s; backdrop-filter:blur(8px);
     }
     .crop-modal-overlay.active { opacity:1; visibility:visible; }
     .crop-modal {
-      background:var(--card);
-      border:1px solid var(--border2);
-      border-radius:var(--radius-lg);
-      width:min(92vw,480px);
-      display:flex;
-      flex-direction:column;
-      gap:1.25rem;
-      padding:1.5rem;
-      box-shadow:var(--shadow);
+      background:var(--card); border:1px solid var(--border2); border-radius:var(--radius-lg);
+      width:min(92vw,480px); display:flex; flex-direction:column; gap:1.25rem;
+      padding:1.5rem; box-shadow:var(--shadow);
     }
     .crop-modal-header { display:flex; flex-direction:column; gap:0.25rem; }
-    .crop-modal-header h2 {
-      display:flex;
-      align-items:center;
-      gap:0.5rem;
-      font-size:1.05rem;
-      margin:0;
-    }
+    .crop-modal-header h2 { display:flex; align-items:center; gap:0.5rem; font-size:1.05rem; margin:0; }
     .crop-hint { color:var(--muted); font-size:0.8rem; margin:0; }
-
     .crop-canvas-wrap {
-      position:relative;
-      border-radius:var(--radius);
-      overflow:hidden;
-      line-height:0;
+      position:relative; border-radius:var(--radius); overflow:hidden; line-height:0;
       background:repeating-conic-gradient(#444 0% 25%, #222 0% 50%) 0 0 / 20px 20px;
     }
-    #cropCanvas {
-      display:block;
-      width:100%;
-      height:auto;
-      aspect-ratio:1 / 1;
-      cursor:grab;
-      touch-action:none;
-    }
-
+    #cropCanvas { display:block; width:100%; height:auto; aspect-ratio:1/1; cursor:grab; touch-action:none; }
     .crop-overlay { position:absolute; inset:0; pointer-events:none; }
     .crop-frame {
-      position:absolute;
-      inset:8px;
-      border:2px dashed rgba(255,255,255,0.5);
-      border-radius:4px;
-      box-shadow:0 0 0 9999px rgba(0,0,0,0.35);
+      position:absolute; inset:8px; border:2px dashed rgba(255,255,255,0.5);
+      border-radius:4px; box-shadow:0 0 0 9999px rgba(0,0,0,0.35);
     }
-
     .crop-controls { display:flex; flex-direction:column; gap:0.75rem; }
     .zoom-slider { width:100%; accent-color:var(--primary); cursor:pointer; }
     .crop-actions { display:flex; gap:0.75rem; justify-content:flex-end; }
 
-    @media (max-width: 640px) {
+    /* Toast */
+    .toast {
+      position:fixed; bottom:2rem; left:50%;
+      transform:translateX(-50%) translateY(30px);
+      display:flex; align-items:center; gap:0.6rem;
+      padding:0.7rem 1.4rem; border-radius:999px;
+      font-size:0.875rem; font-weight:500;
+      background:var(--card); border:1px solid var(--border2);
+      color:var(--text); box-shadow:0 8px 32px rgba(0,0,0,0.4);
+      opacity:0; transition:all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+      z-index:9998; pointer-events:none; white-space:nowrap;
+    }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    .toast-success { background:rgba(21,128,61,0.95); border-color:#15803d; color:#fff; }
+    .toast-error   { background:rgba(220,38,38,0.95); border-color:#dc2626; color:#fff; }
+    .toast .material-icons-round { font-size:1.1rem !important; }
+
+    @media (max-width:640px) {
       .checkbox-grid { grid-template-columns:1fr; }
       .crop-actions { flex-direction:column; }
       .crop-actions button { width:100%; }

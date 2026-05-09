@@ -94,6 +94,7 @@ import MainLayout from "../layouts/MainLayout.astro";
         <div id="complaintsGrid" class="complaints-grid">
           <!-- cards injected here -->
         </div>
+        <div class="pagination" id="adminPagination"></div>
       </div>
     </div>
   </section>
@@ -107,6 +108,8 @@ import MainLayout from "../layouts/MainLayout.astro";
   let chartInstance: any = null;
   let mapInstance: any = null;
   let currentFilter = "All";
+  let adminPage = 1;
+  const ADMIN_PAGE_SIZE = 9;
 
   document.getElementById("logoutBtn")!.addEventListener("click", async () => {
     await supabase.auth.signOut();
@@ -156,72 +159,87 @@ import MainLayout from "../layouts/MainLayout.astro";
   };
 
   function renderCards() {
-    const data = currentFilter === "All" ? complaints : complaints.filter(c => c.status === currentFilter);
-    const grid = document.getElementById("complaintsGrid")!;
+  const data = currentFilter === "All" ? complaints : complaints.filter(c => c.status === currentFilter);
+  const grid = document.getElementById("complaintsGrid")!;
 
-    if (!data.length) {
-      grid.innerHTML = `<p class="empty-msg">No complaints found for this filter.</p>`;
-      return;
-    }
+  if (!data.length) {
+    grid.innerHTML = `<p class="empty-msg">No complaints found for this filter.</p>`;
+    renderAdminPagination(0);
+    return;
+  }
 
-    grid.innerHTML = data.map(c => `
-      <div class="complaint-card card">
-        <div class="cc-top">
-          ${
-            c.image_url
-              ? `
-                <div class="image-frame">
-                  <img
-                    src="${c.image_url}"
-                    class="cc-image"
-                    data-lightbox
-                    data-src="${c.image_url}"
-                    alt="${c.vendor_name}" style="border-radius: 8px; width:100%;height:50%;object-fit:cover;object-position:center;"
-                  />
-                </div>
-              `
-              : `<div class="cc-thumb-placeholder"><span class="material-icons-round">store</span></div>`
-          }
+  const start = (adminPage - 1) * ADMIN_PAGE_SIZE;
+  const page  = data.slice(start, start + ADMIN_PAGE_SIZE);
 
-          <div class="cc-vendor" style="margin-top: 0.25rem; margin-bottom: 0.5rem;">
-            <h1><span class="cc-name">${c.vendor_name}</span></h1>
-            <span class="severity ${c.severity}" style="margin-top: 0.25rem; align-items:center; gap:4px;">
-              <span class="material-icons-round sev-icon">${severityIcon[c.severity] ?? 'flag'}</span>
-              ${c.severity}
-            </span><br/>
-          </div>
-        </div>
-
-        <div class="cc-footer">
-          <span class="cc-date" style="margin-bottom: 0.5rem;">
-            <span class="material-icons-round" style="margin-right: 0.5rem;">calendar_today</span>
-            <b>Reported on:</b> ${new Date(c.created_at).toLocaleDateString('en-IN')}
-          </span>
-
-          <select class="status-select" style="margin-bottom: 0.5rem; margin-top: 0.5rem;" onchange="window.updateStatus(${c.id}, this.value)">
-            ${statuses.map(s => `<option value="${s}" ${c.status === s ? "selected" : ""}>${s}</option>`).join('')}
-          </select>
-
-          <a href="/admin/complaint?id=${c.id}" class="view-btn secondary-btn">
-            <span class="material-icons-round">open_in_new</span>View
-          </a>
+  grid.innerHTML = page.map(c => `
+    <div class="complaint-card card">
+      <div class="cc-top">
+        ${c.image_url
+          ? `<div class="image-frame"><img src="${c.image_url}" class="cc-image" data-lightbox data-src="${c.image_url}" alt="${c.vendor_name}" style="border-radius:8px;width:100%;height:50%;object-fit:cover;object-position:center;"/></div>`
+          : `<div class="cc-thumb-placeholder"><span class="material-icons-round">store</span></div>`}
+        <div class="cc-vendor" style="margin-top:0.25rem;margin-bottom:0.5rem;">
+          <h1><span class="cc-name">${c.vendor_name}</span></h1>
+          <span class="severity ${c.severity}" style="margin-top:0.25rem;align-items:center;gap:4px;">
+            <span class="material-icons-round sev-icon">${severityIcon[c.severity] ?? 'flag'}</span>
+            ${c.severity}
+          </span><br/>
         </div>
       </div>
-    `).join('');
+      <div class="cc-footer">
+        <span class="cc-date" style="margin-bottom:0.5rem;">
+          <span class="material-icons-round" style="margin-right:0.5rem;">calendar_today</span>
+          <b>Reported on:</b> ${new Date(c.created_at).toLocaleDateString('en-IN')}
+        </span>
+        <select class="status-select" style="margin-bottom:0.5rem;margin-top:0.5rem;" onchange="window.updateStatus(${c.id}, this.value)">
+          ${statuses.map(s => `<option value="${s}" ${c.status === s ? "selected" : ""}>${s}</option>`).join('')}
+        </select>
+        <a href="/admin/complaint?id=${c.id}" class="view-btn secondary-btn">
+          <span class="material-icons-round">open_in_new</span>View
+        </a>
+      </div>
+    </div>
+  `).join('');
 
-    document.querySelectorAll('.cc-image[data-lightbox]').forEach((img: any) => {
-      img.addEventListener('click', () => {
-        const lb = document.getElementById('lightbox');
-        const lbImg = document.getElementById('lightboxImg') as HTMLImageElement;
-        if (lb && lbImg) {
-          lbImg.src = img.src;
-          lbImg.classList.remove('zoomed');
-          lb.classList.add('active');
-          document.body.style.overflow = 'hidden';
-        }
-      });
+  document.querySelectorAll('.cc-image[data-lightbox]').forEach((img: any) => {
+    img.addEventListener('click', () => {
+      const lb = document.getElementById('lightbox');
+      const lbImg = document.getElementById('lightboxImg') as HTMLImageElement;
+      if (lb && lbImg) { lbImg.src = img.src; lbImg.classList.remove('zoomed'); lb.classList.add('active'); document.body.style.overflow = 'hidden'; }
     });
+  });
+
+  renderAdminPagination(data.length);
+}
+
+function renderAdminPagination(total: number) {
+  const el = document.getElementById("adminPagination")!;
+  const totalPages = Math.ceil(total / ADMIN_PAGE_SIZE);
+  if (totalPages <= 1) { el.innerHTML = ""; return; }
+
+  let html = `<button class="page-btn" ${adminPage === 1 ? "disabled" : ""} onclick="window.goAdminPage(${adminPage - 1})">
+    <span class="material-icons-round">chevron_left</span>
+  </button>`;
+
+  for (let i = 1; i <= totalPages; i++) {
+    if (totalPages > 7 && Math.abs(i - adminPage) > 2 && i !== 1 && i !== totalPages) {
+      if (i === 2 || i === totalPages - 1) html += `<span class="page-dots">…</span>`;
+      continue;
+    }
+    html += `<button class="page-btn ${i === adminPage ? "active" : ""}" onclick="window.goAdminPage(${i})">${i}</button>`;
   }
+
+  html += `<button class="page-btn" ${adminPage === totalPages ? "disabled" : ""} onclick="window.goAdminPage(${adminPage + 1})">
+    <span class="material-icons-round">chevron_right</span>
+  </button>`;
+
+  el.innerHTML = html;
+}
+
+(window as any).goAdminPage = (page: number) => {
+  adminPage = page;
+  renderCards();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
 
   function renderChart() {
     const ctx = document.getElementById("severityChart") as HTMLCanvasElement;
@@ -299,13 +317,14 @@ import MainLayout from "../layouts/MainLayout.astro";
   }
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentFilter = (btn as HTMLElement).dataset.filter!;
-      renderCards();
-    });
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = (btn as HTMLElement).dataset.filter!;
+    adminPage = 1; // ← add this line
+    renderCards();
   });
+});
 
   async function updateStatus(id: number, status: string) {
     const apiUrl = import.meta.env.VITE_API_URL ?? "https://worker-api.yatin-a-anchan.workers.dev";
@@ -579,4 +598,12 @@ import MainLayout from "../layouts/MainLayout.astro";
 
   .error-msg { color: var(--high); }
   .loading-text { color:var(--muted);font-size:0.9rem;padding:1rem 0; }
+
+  .pagination { display:flex;align-items:center;justify-content:center;gap:0.4rem;margin-top:2rem;flex-wrap:wrap; }
+.page-btn { min-width:38px;height:38px;padding:0 0.6rem;border-radius:9px;border:1px solid var(--border2);background:var(--card);color:var(--text2);font-size:0.875rem;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s; }
+.page-btn:hover:not(:disabled):not(.active) { background:var(--card2);border-color:var(--primary);color:var(--primary); }
+.page-btn.active { background:var(--primary);color:#fff;border-color:var(--primary); }
+.page-btn:disabled { opacity:0.35;cursor:not-allowed; }
+.page-btn .material-icons-round { font-size:1.1rem !important; }
+.page-dots { color:var(--muted);font-size:0.875rem;padding:0 0.25rem;align-self:flex-end; }
 </style>

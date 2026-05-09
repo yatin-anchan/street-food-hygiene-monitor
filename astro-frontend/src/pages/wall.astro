@@ -13,12 +13,35 @@ import MainLayout from "../layouts/MainLayout.astro";
         <p>Community-reported street food hygiene complaints, in real time.</p>
       </div>
 
+      <!-- Search bar -->
+      <div class="search-wrap">
+        <span class="material-icons-round search-icon">search</span>
+        <input
+          type="text"
+          id="searchInput"
+          class="search-input"
+          placeholder="Search by vendor name, issue, or type… (press / to focus)"
+          autocomplete="off"
+          maxlength="100"
+        />
+        <button class="search-clear" id="searchClear" style="display:none" title="Clear">
+          <span class="material-icons-round">close</span>
+        </button>
+      </div>
+
+      <!-- Filters -->
       <div class="wall-filters" id="wallFilters">
         <button class="filter-chip active" data-filter="All">All</button>
         <button class="filter-chip" data-filter="Low">Low</button>
         <button class="filter-chip" data-filter="Medium">Medium</button>
         <button class="filter-chip" data-filter="High">High</button>
         <button class="filter-chip" data-filter="Critical">Critical</button>
+      </div>
+
+      <!-- Results bar (shown during search) -->
+      <div class="results-bar" id="resultsBar" style="display:none">
+        <span id="resultsText"></span>
+        <button class="clear-search-link" id="clearSearchLink">Clear search</button>
       </div>
 
       <div id="complaintsContainer" class="complaints-grid">
@@ -28,42 +51,102 @@ import MainLayout from "../layouts/MainLayout.astro";
           <div class="skeleton-card"></div>
         </div>
       </div>
+
+      <!-- Pagination -->
+      <div class="pagination" id="pagination"></div>
     </div>
   </section>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <!-- Lightbox (same as original) -->
+  <div id="lightbox" class="lightbox-overlay" onclick="closeLightbox()">
+    <button class="lb-close" onclick="closeLightbox()">
+      <span class="material-icons-round">close</span>
+    </button>
+    <img id="lightboxImg" src="" alt="Evidence photo" onclick="event.stopPropagation()" />
+  </div>
 </MainLayout>
 
 <script>
-  let allComplaints: any[] = [];
+  // ── Constants ──────────────────────────────────────────────────────────────
+  const PAGE_SIZE = 9;
 
-  async function loadComplaints() {
-    const container = document.getElementById("complaintsContainer")!;
-    try {
-      const res = await fetch("https://worker-api.yatin-a-anchan.workers.dev/api/messages");
-      allComplaints = await res.json();
-      renderComplaints('All');
-    } catch {
-      container.innerHTML = `<div class="empty-state">
-        <span class="material-icons-round empty-icon">cloud_off</span>
-        <h2>Failed to load complaints</h2>
-        <p>Could not reach the server. Please try again.</p>
-      </div>`;
+  let allComplaints: any[] = [];
+  let filtered: any[]      = [];
+  let currentPage          = 1;
+  let activeFilter         = "All";
+  let searchQuery          = "";
+
+  // ── Toast ──────────────────────────────────────────────────────────────────
+  function showToast(msg: string, type: "success" | "error" | "info" = "info") {
+    const t = document.getElementById("toast")!;
+    const icons: Record<string, string> = { success: "check_circle", error: "error", info: "info" };
+    t.className = `toast toast-${type} show`;
+    t.innerHTML = `<span class="material-icons-round">${icons[type]}</span><span>${msg}</span>`;
+    setTimeout(() => t.classList.remove("show"), 3500);
+  }
+
+  // ── Timestamp helpers ──────────────────────────────────────────────────────
+  function timeAgo(dateStr: string): string {
+    const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+    if (diff < 60)     return "just now";
+    if (diff < 3600)   return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400)  return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+    return new Date(dateStr).toLocaleDateString("en-IN");
+  }
+
+  // ── Lightbox ───────────────────────────────────────────────────────────────
+  (window as any).closeLightbox = () => {
+    document.getElementById("lightbox")!.classList.remove("active");
+    document.body.style.overflow = "";
+  };
+
+  // ── Filter + search ────────────────────────────────────────────────────────
+  function applyFilters() {
+    const q = searchQuery.toLowerCase().trim();
+    filtered = allComplaints.filter(c => {
+      const matchesSeverity = activeFilter === "All" || c.severity === activeFilter;
+      const matchesSearch   = !q || [c.vendor_name, c.vendor_type, c.description, ...(c.issue_types || [])]
+        .some(s => (s || "").toLowerCase().includes(q));
+      return matchesSeverity && matchesSearch;
+    });
+    currentPage = 1;
+    updateResultsBar();
+    renderComplaints();
+    renderPagination();
+  }
+
+  function updateResultsBar() {
+    const bar  = document.getElementById("resultsBar")!;
+    const text = document.getElementById("resultsText")!;
+    if (searchQuery.trim()) {
+      bar.style.display  = "flex";
+      text.textContent   = `${filtered.length} result${filtered.length !== 1 ? "s" : ""} for "${searchQuery}"`;
+    } else {
+      bar.style.display  = "none";
     }
   }
 
-  function renderComplaints(filter: string) {
+  // ── Render (YOUR original HTML, untouched) ─────────────────────────────────
+  function renderComplaints() {
     const container = document.getElementById("complaintsContainer")!;
-    const filtered = filter === 'All' ? allComplaints : allComplaints.filter(c => c.severity === filter);
 
     if (!filtered.length) {
       container.innerHTML = `<div class="empty-state">
-        <span class="material-icons-round empty-icon">inbox</span>
-        <h2>No complaints found</h2>
-        <p>No ${filter !== 'All' ? filter.toLowerCase() + ' severity' : ''} reports yet.</p>
+        <span class="material-icons-round empty-icon">${searchQuery ? "search_off" : "inbox"}</span>
+        <h2>${searchQuery ? "No results found" : "No complaints found"}</h2>
+        <p>${searchQuery ? `No complaints match "${searchQuery}".` : `No ${activeFilter !== "All" ? activeFilter.toLowerCase() + " severity" : ""} reports yet.`}</p>
       </div>`;
       return;
     }
 
-    container.innerHTML = `<div class="complaints-grid-inner">${filtered.map(c => `
+    const start  = (currentPage - 1) * PAGE_SIZE;
+    const page   = filtered.slice(start, start + PAGE_SIZE);
+
+    container.innerHTML = `<div class="complaints-grid-inner">${page.map(c => `
       <div class="complaint-card card" data-id="${c.id}">
         <div class="img-wrap">
           <img src="${c.image_url || 'https://placehold.co/600x340/1a2236/4f8ef7?text=No+Image'}"
@@ -75,7 +158,7 @@ import MainLayout from "../layouts/MainLayout.astro";
         <div class="card-body">
           <div class="top-row">
             <div>
-              <h1 style="margin-bottom: 0.5rem;">${c.vendor_name || "Unknown Vendor"}</h2>
+              <h1 style="margin-bottom: 0.5rem;">${c.vendor_name || "Unknown Vendor"}</h1>
               <p class="vendor-type" style="margin-top: 0.5rem;"><span class="material-icons-round">storefront</span>${c.vendor_type}</p>
             </div>
             <span class="severity ${c.severity}" style="margin-top: 0.5rem;">${c.severity}</span>
@@ -87,7 +170,9 @@ import MainLayout from "../layouts/MainLayout.astro";
 
           <div class="card-meta">
             <span class="status-pill"><span class="material-icons-round">pending</span> ${c.status}</span>&nbsp;&nbsp;&nbsp;
-            <span class="card-date"><span class="material-icons-round">schedule</span>${new Date(c.created_at).toLocaleDateString('en-IN')}</span>
+            <span class="card-date" title="${new Date(c.created_at).toLocaleString('en-IN')}">
+              <span class="material-icons-round">schedule</span>${timeAgo(c.created_at)}
+            </span>
           </div>
 <br>
           <button class="expand-btn secondary-btn" style="width:wrap-content; height:40px;" onclick="toggleDetails(${c.id}, this)">
@@ -96,7 +181,7 @@ import MainLayout from "../layouts/MainLayout.astro";
           </button>
 
           <div class="details-panel" id="details-${c.id}" style="display:none; margin-top:2rem;">
-            <p class="desc-text"><bs>Description:</b> ${c.description}</p>
+            <p class="desc-text"><b>Description:</b> ${c.description}</p>
             ${c.latitude && c.longitude ? `
             <div class="map-embed">
               <div id="map-${c.id}" style="height:220px;border-radius:var(--radius-sm);overflow:hidden;margin-top:1rem"></div>
@@ -108,12 +193,12 @@ import MainLayout from "../layouts/MainLayout.astro";
       <br>
     `).join('')}</div>`;
 
-    // Attach lightbox to images
+    // Attach lightbox to images (your original logic)
     document.querySelectorAll('[data-lightbox]').forEach((img: any) => {
       img.addEventListener('click', () => {
         const src = img.src;
         if (!src.includes('placehold.co')) {
-          const lb = document.getElementById('lightbox');
+          const lb    = document.getElementById('lightbox');
           const lbImg = document.getElementById('lightboxImg') as HTMLImageElement;
           if (lb && lbImg) { lbImg.src = src; lbImg.classList.remove('zoomed'); lb.classList.add('active'); document.body.style.overflow = 'hidden'; }
         }
@@ -121,9 +206,10 @@ import MainLayout from "../layouts/MainLayout.astro";
     });
   }
 
+  // ── Toggle details (your original logic) ──────────────────────────────────
   (window as any).toggleDetails = (id: number, btn: HTMLButtonElement) => {
     const panel = document.getElementById(`details-${id}`)!;
-    const open = panel.style.display !== 'none';
+    const open  = panel.style.display !== 'none';
 
     if (!open) {
       panel.style.display = 'block';
@@ -133,11 +219,12 @@ import MainLayout from "../layouts/MainLayout.astro";
       if (complaint?.latitude && complaint?.longitude && !(window as any)[`map_${id}`]) {
         setTimeout(() => {
           const L = (window as any).L;
+          if (!L) return;
           const m = L.map(`map-${id}`).setView([complaint.latitude, complaint.longitude], 15);
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(m);
           let color = '#22c55e';
-          if (complaint.severity === 'Medium') color = '#f59e0b';
-          if (complaint.severity === 'High') color = '#ef4444';
+          if (complaint.severity === 'Medium')   color = '#f59e0b';
+          if (complaint.severity === 'High')     color = '#ef4444';
           if (complaint.severity === 'Critical') color = '#dc2626';
           L.circleMarker([complaint.latitude, complaint.longitude], { radius: 12, color, fillColor: color, fillOpacity: 0.8, weight: 2 })
             .addTo(m).bindPopup(`<strong>${complaint.vendor_name}</strong><br/>${complaint.severity}`).openPopup();
@@ -150,23 +237,142 @@ import MainLayout from "../layouts/MainLayout.astro";
     }
   };
 
-  // Filters
+  // ── Pagination ─────────────────────────────────────────────────────────────
+  function renderPagination() {
+    const el    = document.getElementById("pagination")!;
+    const total = Math.ceil(filtered.length / PAGE_SIZE);
+    if (total <= 1) { el.innerHTML = ""; return; }
+
+    let html = `<button class="page-btn" ${currentPage === 1 ? "disabled" : ""} onclick="goPage(${currentPage - 1})">
+      <span class="material-icons-round">chevron_left</span>
+    </button>`;
+
+    for (let i = 1; i <= total; i++) {
+      if (total > 7 && Math.abs(i - currentPage) > 2 && i !== 1 && i !== total) {
+        if (i === 2 || i === total - 1) html += `<span class="page-dots">…</span>`;
+        continue;
+      }
+      html += `<button class="page-btn ${i === currentPage ? "active" : ""}" onclick="goPage(${i})">${i}</button>`;
+    }
+
+    html += `<button class="page-btn" ${currentPage === total ? "disabled" : ""} onclick="goPage(${currentPage + 1})">
+      <span class="material-icons-round">chevron_right</span>
+    </button>`;
+
+    el.innerHTML = html;
+  }
+
+  (window as any).goPage = (page: number) => {
+    currentPage = page;
+    renderComplaints();
+    renderPagination();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // ── Search wiring ──────────────────────────────────────────────────────────
+  const searchInput = document.getElementById("searchInput") as HTMLInputElement;
+  const searchClear = document.getElementById("searchClear")!;
+  let searchTimer: ReturnType<typeof setTimeout>;
+
+  searchInput.addEventListener("input", () => {
+    searchQuery = searchInput.value;
+    searchClear.style.display = searchQuery ? "flex" : "none";
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(applyFilters, 280);
+  });
+
+  searchClear.addEventListener("click", () => {
+    searchInput.value = ""; searchQuery = "";
+    searchClear.style.display = "none";
+    applyFilters(); searchInput.focus();
+  });
+
+  document.getElementById("clearSearchLink")!.addEventListener("click", () => {
+    searchInput.value = ""; searchQuery = "";
+    searchClear.style.display = "none";
+    applyFilters();
+  });
+
+  // ── Severity filter wiring ─────────────────────────────────────────────────
   document.querySelectorAll('.filter-chip').forEach(chip => {
     chip.addEventListener('click', () => {
       document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
-      renderComplaints((chip as HTMLElement).dataset.filter!);
+      activeFilter = (chip as HTMLElement).dataset.filter!;
+      applyFilters();
     });
   });
+
+  // Press / to focus search
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") (window as any).closeLightbox();
+    if (e.key === "/" && document.activeElement !== searchInput) {
+      e.preventDefault(); searchInput.focus();
+    }
+  });
+
+  // ── Load ───────────────────────────────────────────────────────────────────
+  async function loadComplaints() {
+    const container = document.getElementById("complaintsContainer")!;
+    try {
+      const res = await fetch("https://worker-api.yatin-a-anchan.workers.dev/api/messages");
+      if (!res.ok) throw new Error();
+      allComplaints = await res.json();
+      applyFilters();
+      showToast(`${allComplaints.length} complaints loaded`, "success");
+    } catch {
+      container.innerHTML = `<div class="empty-state">
+        <span class="material-icons-round empty-icon">cloud_off</span>
+        <h2>Failed to load complaints</h2>
+        <p>Could not reach the server. Please try again.</p>
+      </div>`;
+      showToast("Failed to load complaints", "error");
+    }
+  }
 
   loadComplaints();
 </script>
 
 <style>
-  .wall-header { text-align: center; margin-bottom: 2.5rem; }
+  /* ── Search ──────────────────────────────────────────────────────────────── */
+  .search-wrap {
+    position: relative; max-width: 560px; margin: 0 auto 1.5rem;
+  }
+  .search-icon {
+    position: absolute; left: 1rem; top: 50%; transform: translateY(-50%);
+    color: var(--muted); font-size: 1.1rem !important; pointer-events: none;
+  }
+  .search-input {
+    width: 100%; padding: 0.75rem 2.75rem;
+    background: var(--card); border: 1px solid var(--border2);
+    border-radius: 999px; color: var(--text); font-size: 0.9rem;
+    outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,142,247,0.15); }
+  .search-clear {
+    position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+    width: 28px; height: 28px; border-radius: 50%; border: none;
+    background: var(--card2); color: var(--muted); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+  }
+  .search-clear:hover { background: var(--border2); color: var(--text); }
+  .search-clear .material-icons-round { font-size: 0.9rem !important; }
+
+  .results-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; margin-bottom: 1rem; color: var(--muted); font-size: 0.875rem;
+  }
+  .clear-search-link {
+    background: none; border: none; color: var(--primary);
+    font-size: 0.875rem; cursor: pointer; text-decoration: underline; padding: 0;
+  }
+
+  /* ── Header ──────────────────────────────────────────────────────────────── */
+  .wall-header { text-align: center; margin-bottom: 2rem; }
   .wall-header h1 { font-size: clamp(2rem, 4vw, 3rem); margin: 1rem 0 0.5rem; }
   .wall-header p { color: var(--muted); }
 
+  /* ── Filters ─────────────────────────────────────────────────────────────── */
   .wall-filters {
     display: flex; flex-wrap: wrap; gap: 0.5rem;
     justify-content: center; margin-bottom: 2.5rem;
@@ -180,19 +386,16 @@ import MainLayout from "../layouts/MainLayout.astro";
   .filter-chip:hover { background: var(--card2); }
   .filter-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
 
+  /* ── Grid (your original) ────────────────────────────────────────────────── */
   .complaints-grid-inner {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
     gap: 1.5rem;
   }
   .complaint-card {
-  padding: 0;
-  overflow: hidden;
-  transition: all 0.25s ease;
-  display: flex;
-  flex-direction: column;
-  background: var(--card);
-}
+    padding: 0; overflow: hidden; transition: all 0.25s ease;
+    display: flex; flex-direction: column; background: var(--card);
+  }
   .complaint-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: var(--border2); }
 
   .img-wrap { position: relative; overflow: hidden; }
@@ -203,55 +406,19 @@ import MainLayout from "../layouts/MainLayout.astro";
   .img-overlay .material-icons-round { color: white; font-size: 2rem !important; }
   .img-wrap:hover .img-overlay { opacity: 1; background: rgba(0,0,0,0.35); }
 
-  .card-body {
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-  .top-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 0.5rem;
-}
-
-.top-row h2 {
-  font-size: 1.05rem;
-  margin: 0;
-  line-height: 1.4;
-}
-  .vendor-type {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: var(--muted);
-  font-size: 0.85rem;
-  margin-top: 0.25rem;
-}
-
-.issue-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin: 0.5rem 0 0.75rem;
-}
+  .card-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  .top-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 0.5rem; }
+  .top-row h2 { font-size: 1.05rem; margin: 0; line-height: 1.4; }
+  .vendor-type { display: flex; align-items: center; gap: 0.4rem; color: var(--muted); font-size: 0.85rem; margin-top: 0.25rem; }
   .vendor-type .material-icons-round { font-size: 0.9rem !important; }
 
-  
+  .issue-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.5rem 0 0.75rem; }
   .issue-tag {
     background: var(--glass2); border: 1px solid var(--border2);
     padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.78rem; color: var(--text2);
   }
 
-  .card-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin: 0.25rem 0 0.75rem;
-}
+  .card-meta { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin: 0.25rem 0 0.75rem; }
   .status-pill {
     display: inline-flex; align-items: center; gap: 0.3rem;
     background: rgba(79,142,247,0.12); color: var(--primary);
@@ -259,7 +426,7 @@ import MainLayout from "../layouts/MainLayout.astro";
     padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.78rem; font-weight: 600;
   }
   .status-pill .material-icons-round { font-size: 0.8rem !important; }
-  .card-date { display: flex; align-items: center; gap: 0.3rem; color: var(--muted); font-size: 0.8rem; }
+  .card-date { display: flex; align-items: center; gap: 0.3rem; color: var(--muted); font-size: 0.8rem; cursor: default; }
   .card-date .material-icons-round { font-size: 0.85rem !important; }
 
   .expand-btn { width: 100%; justify-content: center; padding: 0.6rem; font-size: 0.875rem; }
@@ -270,17 +437,76 @@ import MainLayout from "../layouts/MainLayout.astro";
   .timestamp .material-icons-round { font-size: 0.85rem !important; }
   .no-location { display: flex; align-items: center; gap: 0.5rem; color: var(--muted); font-size: 0.85rem; margin-top: 0.5rem; }
 
+  /* ── Skeleton (your original) ────────────────────────────────────────────── */
   .loading-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.5rem; }
   .skeleton-card {
     height: 400px; border-radius: var(--radius-lg);
     background: linear-gradient(90deg, var(--card) 25%, var(--card2) 50%, var(--card) 75%);
-    background-size: 600px 100%;
-    animation: shimmer 1.5s infinite;
+    background-size: 600px 100%; animation: shimmer 1.5s infinite;
   }
   @keyframes shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
 
+  /* ── Empty state (your original) ────────────────────────────────────────── */
   .empty-state { text-align: center; padding: 5rem 0; }
   .empty-icon { font-size: 3rem !important; color: var(--muted); display: block; margin-bottom: 1rem; }
   .empty-state h2 { margin-bottom: 0.5rem; }
   .empty-state p { color: var(--muted); }
+
+  /* ── Pagination ──────────────────────────────────────────────────────────── */
+  .pagination {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0.4rem; margin-top: 3rem; flex-wrap: wrap;
+  }
+  .page-btn {
+    min-width: 38px; height: 38px; padding: 0 0.6rem;
+    border-radius: 9px; border: 1px solid var(--border2);
+    background: var(--card); color: var(--text2);
+    font-size: 0.875rem; font-weight: 500; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+  }
+  .page-btn:hover:not(:disabled):not(.active) { background: var(--card2); border-color: var(--primary); color: var(--primary); }
+  .page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .page-btn .material-icons-round { font-size: 1.1rem !important; }
+  .page-dots { color: var(--muted); font-size: 0.875rem; padding: 0 0.25rem; align-self: flex-end; }
+
+  /* ── Lightbox ────────────────────────────────────────────────────────────── */
+  .lightbox-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+    backdrop-filter: blur(10px); display: flex; align-items: center;
+    justify-content: center; z-index: 9999; opacity: 0;
+    pointer-events: none; transition: opacity 0.3s;
+  }
+  .lightbox-overlay.active { opacity: 1; pointer-events: all; }
+  .lightbox-overlay img {
+    max-width: 92vw; max-height: 88vh; border-radius: 12px;
+    object-fit: contain; box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+    transform: scale(0.94); transition: transform 0.3s ease;
+  }
+  .lightbox-overlay.active img { transform: scale(1); }
+  .lb-close {
+    position: absolute; top: 1.25rem; right: 1.25rem;
+    width: 42px; height: 42px; border-radius: 50%; border: none;
+    background: rgba(255,255,255,0.12); color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: background 0.2s;
+  }
+  .lb-close:hover { background: rgba(255,255,255,0.22); }
+  .lb-close .material-icons-round { font-size: 1.3rem !important; }
+
+  /* ── Toast ───────────────────────────────────────────────────────────────── */
+  .toast {
+    position: fixed; bottom: 2rem; left: 50%;
+    transform: translateX(-50%) translateY(30px);
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.7rem 1.4rem; border-radius: 999px;
+    font-size: 0.875rem; font-weight: 500;
+    background: var(--card); border: 1px solid var(--border2);
+    color: var(--text); box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    opacity: 0; transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    z-index: 9998; pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast-success { background: rgba(21,128,61,0.95); border-color: #15803d; color: #fff; }
+  .toast-error   { background: rgba(220,38,38,0.95); border-color: #dc2626; color: #fff; }
+  .toast .material-icons-round { font-size: 1.1rem !important; }
 </style>
