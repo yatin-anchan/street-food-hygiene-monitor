@@ -184,28 +184,44 @@ import MainLayout from "../layouts/MainLayout.astro";
   <script>
     // ── Profanity filter ─────────────────────────────────────────────────────
     // Lightweight list — extend as needed
-    const PROFANITY_LIST = [
-      "fuck", "shit", "bitch", "asshole", "bastard", "damn", "crap",
-      "piss", "dick", "cock", "pussy", "cunt", "motherfucker", "fucker",
-      "bullshit", "jackass", "moron", "idiot", "retard", "slut", "whore",
-    ];
 
-    function containsProfanity(text: string): boolean {
-      const lower = text.toLowerCase().replace(/[^a-z0-9\s]/g, "");
-      return PROFANITY_LIST.some(word => {
-        const regex = new RegExp(`\\b${word}\\b`, "i");
-        return regex.test(lower);
-      });
-    }
+    const PROFANITY_PATTERNS = [
+  /f+u*c*k+/i,
+  /f+u+c+k+i+n+g+/i,
+  /f+ck+/i,
+  /sh+i+t+/i,
+  /b+i+t+c+h+/i,
+  /a+s+s+h+o+l+e+/i,
+  /b+a+s+t+a+r+d+/i,
+  /d+a+m+n+/i,
+  /c+r+a+p+/i,
+  /p+i+s+s+/i,
+  /d+i+c+k+/i,
+  /c+o+c+k+/i,
+  /p+u+s+s+y+/i,
+  /c+u+n+t+/i,
+  /m+o+t+h+e+r+f+u*c*k+e*r+/i,
+  /f+u*c*k+e*r+/i,
+  /b+u+l+l+s+h+i+t+/i,
+  /j+a+c+k+a+s+s+/i,
+  /m+o+r+o+n+/i,
+  /i+d+i+o+t+/i,
+  /r+e+t+a+r+d+/i,
+  /s+l+u+t+/i,
+  /w+h+o+r+e+/i,
+];
 
-    function sanitizeText(text: string): string {
-      let out = text;
-      PROFANITY_LIST.forEach(word => {
-        const regex = new RegExp(`\\b${word}\\b`, "gi");
-        out = out.replace(regex, "*".repeat(word.length));
-      });
-      return out;
-    }
+function normalizeText(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .replace(/(.)\1{2,}/g, "$1");
+}
+
+function containsProfanity(text: string): boolean {
+  const cleaned = normalizeText(text);
+  return PROFANITY_PATTERNS.some((pattern) => pattern.test(cleaned));
+}
 
     // ── Rate limiting ────────────────────────────────────────────────────────
     const RATE_LIMIT_MS = 60_000; // 1 minute between submissions
