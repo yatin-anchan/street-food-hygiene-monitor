@@ -69,7 +69,7 @@ export default {
           .from("complaints")
           .select("*")
           .order("created_at", { ascending: false })
-          .limit(10);
+          .limit(100);
 
         if (!fetchError && latest) {
           await env.FEEDBACK_KV.put(
