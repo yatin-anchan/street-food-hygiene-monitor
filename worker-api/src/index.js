@@ -69,7 +69,7 @@ export default {
           .from("complaints")
           .select("*")
           .order("created_at", { ascending: false })
-          .limit(100);
+          .limit(50);
 
         if (!fetchError && latest) {
           await env.FEEDBACK_KV.put(
@@ -105,7 +105,7 @@ export default {
           .from("complaints")
           .select("*")
           .order("created_at", { ascending: false })
-          .limit(10);
+          .limit(50);
 
         if (error) {
           console.error("Supabase fetch error:", error);
