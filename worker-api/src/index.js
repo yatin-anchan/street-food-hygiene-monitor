@@ -24,7 +24,6 @@ export default {
       try {
         const body = await request.json();
 
-        // Validate required field
         if (!body.description || body.description.trim().length < 5) {
           return Response.json(
             { error: "Message too short (minimum 5 characters)" },
@@ -39,7 +38,6 @@ export default {
           );
         }
 
-        // Insert into Supabase
         const { error: insertError } = await supabase
           .from("complaints")
           .insert([
@@ -63,7 +61,10 @@ export default {
           );
         }
 
-        // Refresh KV cache with latest 10 after new submission
+        // Always delete stale KV cache after new submission
+        await env.FEEDBACK_KV.delete("latest_complaints");
+
+        // Fetch fresh data and store in KV
         const { data: latest, error: fetchError } = await supabase
           .from("complaints")
           .select("*")
@@ -74,7 +75,7 @@ export default {
           await env.FEEDBACK_KV.put(
             "latest_complaints",
             JSON.stringify(latest),
-            { expirationTtl: 60 } // auto-expire after 60 seconds
+            { expirationTtl: 60 }
           );
         }
 
@@ -95,20 +96,11 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/api/messages") {
       try {
-        // 1. Try KV cache first
-        const cached = await env.FEEDBACK_KV.get("latest_complaints");
 
-        if (cached) {
-          return new Response(cached, {
-            headers: {
-              ...corsHeaders,
-              "Content-Type": "application/json",
-              "X-Cache": "HIT",
-            },
-          });
-        }
+        // STEP 1: Always delete old stale KV first
+        await env.FEEDBACK_KV.delete("latest_complaints");
 
-        // 2. KV miss → fetch fresh from Supabase
+        // STEP 2: Always fetch fresh from Supabase
         const { data, error } = await supabase
           .from("complaints")
           .select("*")
@@ -123,17 +115,20 @@ export default {
           );
         }
 
-        // 3. Store in KV for next requests
+        // STEP 3: Store fresh data in KV
         await env.FEEDBACK_KV.put(
           "latest_complaints",
           JSON.stringify(data),
-          { expirationTtl: 60 } // auto-expire after 60 seconds
+          { expirationTtl: 60 }
         );
+
+        console.log("Fetched from Supabase, count:", data.length);
 
         return Response.json(data, {
           headers: {
             ...corsHeaders,
             "X-Cache": "MISS",
+            "X-Count": String(data.length),
           },
         });
 
@@ -175,7 +170,6 @@ export default {
           );
         }
 
-        // Invalidate KV cache so next GET fetches fresh data
         await env.FEEDBACK_KV.delete("latest_complaints");
 
         return Response.json({ success: true }, { headers: corsHeaders });
