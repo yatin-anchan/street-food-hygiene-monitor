@@ -105,7 +105,7 @@ flowchart TD
 
 ---
 
-## 📡 API Endpoints
+## 📡 API Endpoints HElo
 
 | Method | Endpoint             | Description                 |
 | ------ | -------------------- | --------------------------- |
@@ -131,7 +131,7 @@ complaints (
   status TEXT DEFAULT 'pending',
   created_at TIMESTAMP DEFAULT NOW()
 )
-```
+```Helo
 
 ---
 
@@ -174,7 +174,7 @@ Admin insights include:
 
 * Total complaint volume
 * Severity distribution
-* Category breakdown
+* Category breakdownHey
 * Time-based trends
 * Map clustering of incidents
 
